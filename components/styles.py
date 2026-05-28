@@ -5,224 +5,261 @@ def inject_global_styles():
     st.markdown("""
     <style>
     :root {
-        --bg: #08111d;
-        --panel: #0d1726;
-        --panel-2: #101c2e;
-        --border: rgba(148, 163, 184, 0.16);
-        --text: #e5edf7;
-        --muted: #94a3b8;
+        --bg: #f6f7fb;
+        --panel: #ffffff;
+        --panel-soft: #fbfcfe;
+        --border: #e7ebf3;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --muted-2: #94a3b8;
 
-        --green: #16c784;
-        --blue: #3b82f6;
-        --gold: #f59e0b;
+        --blue: #4f8df7;
         --purple: #8b5cf6;
+        --green: #10b981;
+        --amber: #f59e0b;
         --red: #ef4444;
     }
 
     .stApp {
-        background: #08111d;
+        background: var(--bg);
         color: var(--text);
     }
 
     [data-testid="stSidebar"] {
-        background: #0b1524;
+        background: #ffffff;
         border-right: 1px solid var(--border);
     }
 
     .block-container {
-        max-width: 1500px;
-        padding-top: 1.2rem;
-        padding-bottom: 1.5rem;
+        max-width: 1550px;
+        padding-top: 1rem;
+        padding-bottom: 1.2rem;
     }
 
-    h1, h2, h3 {
+    h1, h2, h3, h4 {
         color: var(--text) !important;
         letter-spacing: -0.02em;
     }
 
-    .app-header {
-        background: #0c1626;
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 1rem 1.2rem;
-        margin-bottom: 1rem;
-    }
-
-    .app-kicker {
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-size: 0.75rem;
-        font-weight: 700;
-        margin-bottom: 0.25rem;
-    }
-
-    .app-subtitle {
-        color: var(--muted);
-        font-size: 0.95rem;
-        margin-top: 0.3rem;
-    }
-
-    .color-card {
-        border-radius: 18px;
-        padding: 0.9rem 1rem;
-        color: white;
-        min-height: 96px;
-        border: 1px solid rgba(255,255,255,0.08);
-        box-shadow: none;
-    }
-
-    .card-green { background: linear-gradient(180deg, #123b30 0%, #0f2f27 100%); }
-    .card-blue { background: linear-gradient(180deg, #142f5a 0%, #112746 100%); }
-    .card-gold { background: linear-gradient(180deg, #4b3411 0%, #3a280d 100%); }
-    .card-purple { background: linear-gradient(180deg, #35204f 0%, #2b1a40 100%); }
-
-    .color-card-label {
-        font-size: 0.72rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        opacity: 0.82;
-        font-weight: 700;
-        margin-bottom: 0.35rem;
-    }
-
-    .color-card-value {
-        font-size: 1.7rem;
-        font-weight: 800;
-        line-height: 1.1;
-        margin-bottom: 0.2rem;
-    }
-
-    .color-card-sub {
-        font-size: 0.82rem;
-        opacity: 0.82;
-    }
-
-    .section-box {
-        background: #0c1626;
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 0.95rem 1rem 0.6rem 1rem;
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
         margin-bottom: 0.9rem;
     }
 
-    .section-label {
+    .topbar-title {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+    }
+
+    .topbar-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        border: 2px solid var(--blue);
+        color: var(--blue);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.9rem;
+        background: #eef4ff;
+    }
+
+    .topbar-name {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--text);
+    }
+
+    .topbar-sub {
         color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+        font-size: 0.83rem;
+    }
+
+    .toolbar-note {
+        color: var(--muted);
+        font-size: 0.83rem;
+        text-align: right;
+    }
+
+    .stat-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.75rem 0.95rem;
+        min-height: 92px;
+    }
+
+    .stat-label {
+        color: var(--muted);
         font-size: 0.72rem;
+        text-transform: uppercase;
         font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.35rem;
+    }
+
+    .stat-value {
+        color: var(--text);
+        font-size: 1.85rem;
+        font-weight: 800;
+        line-height: 1;
         margin-bottom: 0.25rem;
     }
 
-    .section-title {
+    .stat-sub {
+        color: var(--muted-2);
+        font-size: 0.8rem;
+    }
+
+    .stat-accent-blue { box-shadow: inset 0 0 0 1px rgba(79,141,247,0.04); }
+    .stat-accent-purple { box-shadow: inset 0 0 0 1px rgba(139,92,246,0.04); }
+    .stat-accent-green { box-shadow: inset 0 0 0 1px rgba(16,185,129,0.04); }
+    .stat-accent-amber { box-shadow: inset 0 0 0 1px rgba(245,158,11,0.04); }
+    .stat-accent-red { box-shadow: inset 0 0 0 1px rgba(239,68,68,0.04); }
+
+    .mini-strip {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.7rem 0.85rem;
+        margin-top: 0.8rem;
+        margin-bottom: 0.85rem;
+    }
+
+    .mini-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.08rem;
+    }
+
+    .mini-label {
+        color: var(--muted);
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+    }
+
+    .mini-value {
         color: var(--text);
-        font-size: 1.15rem;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .mini-sub {
+        color: var(--muted-2);
+        font-size: 0.74rem;
+    }
+
+    .mini-pos { color: var(--green); }
+    .mini-neg { color: var(--red); }
+    .mini-neutral { color: var(--amber); }
+
+    .tab-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.9rem 0.95rem 0.7rem 0.95rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .tab-label {
+        color: var(--muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.2rem;
+    }
+
+    .tab-title {
+        color: var(--text);
+        font-size: 1.12rem;
         font-weight: 800;
         margin-bottom: 0.2rem;
     }
 
-    .section-sub {
+    .tab-sub {
         color: var(--muted);
-        font-size: 0.88rem;
-        margin-bottom: 0.65rem;
-    }
-
-    div[data-testid="metric-container"] {
-        background: #0f1b2d;
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 0.85rem 0.95rem;
-        min-height: 102px;
-        box-shadow: none;
-    }
-
-    div[data-testid="metric-container"] label {
-        color: var(--muted) !important;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        font-size: 0.76rem !important;
-        font-weight: 700 !important;
-    }
-
-    div[data-testid="metric-container"] [data-testid="stMetricValue"] {
-        color: var(--text) !important;
-        font-size: 1.9rem !important;
-        font-weight: 800 !important;
+        font-size: 0.86rem;
     }
 
     button[role="tab"] {
         background: transparent !important;
         color: var(--muted) !important;
-        border-radius: 10px 10px 0 0 !important;
-        padding: 0.75rem 1rem !important;
+        border-radius: 10px !important;
+        padding: 0.65rem 1rem !important;
         font-weight: 700 !important;
-        border-bottom: 2px solid transparent !important;
+        border: 1px solid transparent !important;
+        margin-right: 0.25rem !important;
     }
 
     button[role="tab"][aria-selected="true"] {
         color: var(--text) !important;
-        border-bottom: 2px solid #16c784 !important;
-        background: rgba(255,255,255,0.02) !important;
+        background: #f1f5f9 !important;
+        border: 1px solid var(--border) !important;
     }
 
     div[data-testid="stDataFrame"] {
         border: 1px solid var(--border);
-        border-radius: 16px;
+        border-radius: 14px;
         overflow: hidden;
-        margin-bottom: 1rem;
+        background: white;
     }
 
     div[data-testid="stDataFrame"] [role="columnheader"] {
-        background: #0f1b2d !important;
-        color: #aebed3 !important;
+        background: #f8fafc !important;
+        color: #6b7280 !important;
         font-weight: 700 !important;
     }
 
     div[data-testid="stDataFrame"] [role="gridcell"] {
-        background: #0b1524 !important;
+        background: #ffffff !important;
         color: var(--text) !important;
-        border-color: rgba(148, 163, 184, 0.08) !important;
+        border-color: #eef2f7 !important;
     }
 
-    .sidebar-brand {
-        color: var(--text);
-        font-size: 1.3rem;
-        font-weight: 800;
-        margin-bottom: 0.15rem;
-    }
-
-    .sidebar-sub {
-        color: var(--muted);
-        font-size: 0.82rem;
-        margin-bottom: 1rem;
-    }
-
-    .scanner-pill-row {
+    .tab-toolbar {
         display: flex;
-        gap: 0.5rem;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.7rem;
+    }
+
+    .pill-row {
+        display: flex;
+        gap: 0.45rem;
         flex-wrap: wrap;
-        margin-bottom: 0.8rem;
     }
 
-    .scanner-pill {
+    .pill {
+        padding: 0.32rem 0.65rem;
         border-radius: 999px;
-        padding: 0.38rem 0.72rem;
-        font-size: 0.74rem;
+        font-size: 0.73rem;
         font-weight: 700;
-        border: 1px solid rgba(255,255,255,0.08);
+        border: 1px solid transparent;
     }
 
-    .pill-green { background: rgba(22, 199, 132, 0.12); color: #7ef0bd; }
-    .pill-blue { background: rgba(59, 130, 246, 0.12); color: #93c5fd; }
-    .pill-gold { background: rgba(245, 158, 11, 0.14); color: #fcd34d; }
-    .pill-purple { background: rgba(139, 92, 246, 0.14); color: #c4b5fd; }
+    .pill-blue { background: #eef4ff; color: #336ad4; border-color: #d8e7ff; }
+    .pill-green { background: #ebfbf4; color: #0f9f67; border-color: #d2f5e5; }
+    .pill-purple { background: #f4efff; color: #7c4ce0; border-color: #e6dbff; }
+    .pill-amber { background: #fff6e8; color: #ca8a04; border-color: #fde7bf; }
+
+    .toolbar-right {
+        min-width: 220px;
+    }
 
     .stDownloadButton button,
     .stButton button {
-        border-radius: 12px !important;
+        border-radius: 10px !important;
         border: 1px solid var(--border) !important;
-        background: #101c2e !important;
+        background: #ffffff !important;
         color: var(--text) !important;
         font-weight: 700 !important;
         box-shadow: none !important;
@@ -232,10 +269,46 @@ def inject_global_styles():
     .stNumberInput input,
     div[data-baseweb="select"] > div,
     div[data-baseweb="input"] > div {
-        background: #0b1524 !important;
+        background: #ffffff !important;
         color: var(--text) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 12px !important;
+        border-radius: 10px !important;
+    }
+
+    div[data-testid="metric-container"] {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.8rem 0.9rem;
+        min-height: 94px;
+        box-shadow: none;
+    }
+
+    div[data-testid="metric-container"] label {
+        color: var(--muted) !important;
+        text-transform: uppercase;
+        font-size: 0.73rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.05em;
+    }
+
+    div[data-testid="metric-container"] [data-testid="stMetricValue"] {
+        color: var(--text) !important;
+        font-size: 1.55rem !important;
+        font-weight: 800 !important;
+    }
+
+    .sidebar-brand {
+        color: var(--text);
+        font-size: 1.15rem;
+        font-weight: 800;
+        margin-bottom: 0.15rem;
+    }
+
+    .sidebar-sub {
+        color: var(--muted);
+        font-size: 0.8rem;
+        margin-bottom: 1rem;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -244,71 +317,81 @@ def inject_global_styles():
 def sidebar_brand():
     st.markdown(
         """
-        <div class="sidebar-brand">Guru Scanner</div>
-        <div class="sidebar-sub">Clean institutional scanner workspace</div>
+        <div class="sidebar-brand">Momentum Scanner</div>
+        <div class="sidebar-sub">Indian market scanner workspace</div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def render_header(universe_mode: str):
+def render_topbar(scan_time_text: str):
     st.markdown(
         f"""
-        <div class="app-header">
-            <div class="app-kicker">Momentum Scanner</div>
-            <h1>Guru Scanner</h1>
-            <div class="app-subtitle">Liquidity-aware NSE scanner running in <b>{universe_mode}</b> mode.</div>
+        <div class="topbar">
+            <div class="topbar-title">
+                <div class="topbar-icon">↗</div>
+                <div>
+                    <div class="topbar-name">Momentum Scanner</div>
+                    <div class="topbar-sub">Last scan: {scan_time_text}</div>
+                </div>
+            </div>
+            <div class="toolbar-note">Indian market layout • NSE-first workflow</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def section_box(label: str, title: str, sub: str = ""):
-    st.markdown(
-        f"""
-        <div class="section-box">
-            <div class="section-label">{label}</div>
-            <div class="section-title">{title}</div>
-            <div class="section-sub">{sub}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_color_kpis(universe_count: int, liquid_count: int, q_count: int, m_count: int):
-    c1, c2, c3, c4 = st.columns(4, gap="small")
-    cards = [
-        ("Universe", f"{universe_count:,}", "Selected constituents", "card-green"),
-        ("Liquid", f"{liquid_count:,}", "After liquidity filters", "card-blue"),
-        ("Qullamaggie", f"{q_count:,}", "Q scanner matches", "card-gold"),
-        ("Minervini", f"{m_count:,}", "M scanner matches", "card-purple"),
-    ]
-
-    for col, (label, value, sub, cls) in zip([c1, c2, c3, c4], cards):
+def render_stat_cards(cards):
+    cols = st.columns(len(cards), gap="small")
+    for col, card in zip(cols, cards):
         with col:
             st.markdown(
                 f"""
-                <div class="color-card {cls}">
-                    <div class="color-card-label">{label}</div>
-                    <div class="color-card-value">{value}</div>
-                    <div class="color-card-sub">{sub}</div>
+                <div class="stat-card {card['accent']}">
+                    <div class="stat-label">{card['label']}</div>
+                    <div class="stat-value">{card['value']}</div>
+                    <div class="stat-sub">{card['sub']}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
 
-def render_scanner_pills():
+def render_market_strip(items):
+    box_cols = st.columns(len(items), gap="small")
+    st.markdown("<div class='mini-strip'>", unsafe_allow_html=True)
+    for col, item in zip(box_cols, items):
+        with col:
+            st.markdown(
+                f"""
+                <div class="mini-box">
+                    <div class="mini-label">{item['label']}</div>
+                    <div class="mini-value {item.get('tone', '')}">{item['value']}</div>
+                    <div class="mini-sub">{item['sub']}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def tab_header(label: str, title: str, sub: str):
     st.markdown(
-        """
-        <div class="scanner-pill-row">
-            <span class="scanner-pill pill-green">Qullamaggie</span>
-            <span class="scanner-pill pill-blue">Minervini</span>
-            <span class="scanner-pill pill-gold">Consensus</span>
-            <span class="scanner-pill pill-purple">Metrics</span>
+        f"""
+        <div class="tab-card">
+            <div class="tab-label">{label}</div>
+            <div class="tab-title">{title}</div>
+            <div class="tab-sub">{sub}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_pill_row(pills):
+    html = "<div class='pill-row'>"
+    for text, cls in pills:
+        html += f"<span class='pill {cls}'>{text}</span>"
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
