@@ -167,13 +167,13 @@ with overview_tab:
         "Use the scanner tabs for stock selection and export-ready outputs."
     )
 
-    o1, o2, o3, o4 = st.columns(4, gap="small")
-    o1.metric("Source Rows", source_rows, border=True)
-    o2.metric("Universe Rows Used", universe_rows_used, border=True)
-    o3.metric("Post-Liquidity", metrics_after_liquidity, border=True)
-    o4.metric("Strict Liquidity", "On" if strict_liquidity else "Off", border=True)
-
-    st.markdown("<div style='height: 0.6rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div class='overview-panel'>", unsafe_allow_html=True)
+o1, o2, o3, o4 = st.columns(4, gap="small")
+o1.metric("Source Rows", source_rows, border=True)
+o2.metric("Universe Rows Used", universe_rows_used, border=True)
+o3.metric("Post-Liquidity", metrics_after_liquidity, border=True)
+o4.metric("Strict Liquidity", "On" if strict_liquidity else "Off", border=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
     left, right = st.columns([1.4, 1], gap="large")
 
