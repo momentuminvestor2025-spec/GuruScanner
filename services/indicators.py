@@ -2,6 +2,20 @@ import numpy as np
 import pandas as pd
 
 
+def _normalize_symbol(value: str) -> str:
+    if pd.isna(value):
+        return ""
+    value = str(value).strip().upper()
+    if value.endswith(".NS"):
+        value = value[:-3]
+    return (
+        value
+        .replace("&", "")
+        .replace("-", "")
+        .replace(" ", "")
+    )
+
+
 def compute_metrics(price_df: pd.DataFrame, universe_df: pd.DataFrame) -> pd.DataFrame:
     if price_df.empty:
         return pd.DataFrame()
@@ -18,6 +32,13 @@ def compute_metrics(price_df: pd.DataFrame, universe_df: pd.DataFrame) -> pd.Dat
     numeric_cols = ["open", "high", "low", "close", "volume"]
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df["yf_symbol"] = df["yf_symbol"].astype(str).str.strip().str.upper()
+    df["symbol_key"] = df["yf_symbol"].map(_normalize_symbol)
+
+    u = universe_df.copy()
+    u["yf_symbol"] = u["yf_symbol"].astype(str).str.strip().str.upper()
+    u["symbol_key"] = u["yf_symbol"].map(_normalize_symbol)
 
     df = df.dropna(subset=["date", "close", "yf_symbol"]).copy()
     df = df.sort_values(["yf_symbol", "date"]).reset_index(drop=True)
@@ -76,15 +97,18 @@ def compute_metrics(price_df: pd.DataFrame, universe_df: pd.DataFrame) -> pd.Dat
         + latest["ret_3m"].fillna(0) * 0.35
         + latest["ret_6m"].fillna(0) * 0.40
     )
-
     latest["rs_score"] = latest["rs_raw"].rank(pct=True) * 100
     latest["atr_rs"] = latest["atr_14"].rank(pct=True) * 100
 
     latest = latest.merge(
-        universe_df[["symbol", "company", "sector", "yf_symbol"]],
-        on="yf_symbol",
+        u[["symbol_key", "symbol", "company", "sector"]],
+        on="symbol_key",
         how="left"
     )
+
+    latest["symbol"] = latest["symbol"].fillna(latest["symbol_key"])
+    latest["company"] = latest["company"].fillna("Unknown Company")
+    latest["sector"] = latest["sector"].fillna("Unknown Sector")
 
     latest["ma_aligned"] = (
         (latest["close"] >= latest["ema10"]) &
