@@ -10,8 +10,27 @@ from services.scanners import (
     run_consensus_screen,
 )
 from services.filters import apply_table_filters
+from services.export_utils import dataframe_to_csv_bytes
 
 st.set_page_config(page_title="Guru Scanner", layout="wide")
+
+st.markdown("""
+<style>
+div[data-testid="metric-container"] {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    padding: 10px 14px;
+    border-radius: 14px;
+}
+div[data-testid="metric-container"] label {
+    color: #64748b !important;
+}
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.title("Guru Scanner")
 st.caption("Cache-first scanner mode")
@@ -55,12 +74,78 @@ filtered_q = apply_table_filters(q_screen, search_text, selected_sectors)
 filtered_m = apply_table_filters(m_screen, search_text, selected_sectors)
 filtered_c = apply_table_filters(c_screen, search_text, selected_sectors)
 
+top_sectors = (
+    filtered_metrics.groupby("sector", dropna=False)
+    .agg(
+        stocks=("symbol", "count"),
+        avg_rs=("rs_score", "mean")
+    )
+    .sort_values(["stocks", "avg_rs"], ascending=[False, False])
+    .reset_index()
+    .head(10)
+)
+
+unknown_count = int((filtered_metrics["company"] == "Unknown Company").sum())
+
+st.markdown("### Dashboard")
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Universe", len(universe), border=True)
 k2.metric("Price Rows", len(history), border=True)
 k3.metric("Q Matches", len(filtered_q), border=True)
 k4.metric("M Matches", len(filtered_m), border=True)
 k5.metric("Consensus", len(filtered_c), border=True)
+
+a1, a2, a3 = st.columns(3)
+a1.metric("Metrics Rows", len(filtered_metrics), border=True)
+a2.metric("Top Sector Count", len(top_sectors), border=True)
+a3.metric("Unknown Mappings", unknown_count, border=True)
+
+summary_left, summary_right = st.columns([2, 1])
+
+with summary_left:
+    st.subheader("Sector Strength")
+    if top_sectors.empty:
+        st.info("No sector summary available.")
+    else:
+        st.dataframe(
+            top_sectors.round(2),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "avg_rs": st.column_config.NumberColumn("Average RS", format="%.2f")
+            }
+        )
+
+with summary_right:
+    st.subheader("Export")
+    st.download_button(
+        label="Download Qullamaggie CSV",
+        data=dataframe_to_csv_bytes(filtered_q),
+        file_name="qullamaggie_scanner.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
+    st.download_button(
+        label="Download Minervini CSV",
+        data=dataframe_to_csv_bytes(filtered_m),
+        file_name="minervini_scanner.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
+    st.download_button(
+        label="Download Consensus CSV",
+        data=dataframe_to_csv_bytes(filtered_c),
+        file_name="consensus_scanner.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
+    st.download_button(
+        label="Download Metrics CSV",
+        data=dataframe_to_csv_bytes(filtered_metrics),
+        file_name="metrics_preview.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
 
 tabs = st.tabs([
     "Qullamaggie",
@@ -79,7 +164,7 @@ scanner_cols = [
 with tabs[0]:
     st.subheader("Qullamaggie Scanner")
     if filtered_q.empty:
-        st.info("No Qullamaggie matches yet. Add more historical rows and more symbols to latest_prices.csv.")
+        st.info("No Qullamaggie matches yet.")
     else:
         st.dataframe(
             filtered_q[scanner_cols].round(2),
@@ -100,43 +185,23 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("Minervini Scanner")
     if filtered_m.empty:
-        st.info("No Minervini matches yet. This is normal with very small sample history.")
+        st.info("No Minervini matches yet.")
     else:
         st.dataframe(
             filtered_m[scanner_cols].round(2),
             use_container_width=True,
-            hide_index=True,
-            column_config={
-                "close": st.column_config.NumberColumn("Price", format="%.2f"),
-                "daily_pct": st.column_config.NumberColumn("Daily %", format="%.2f"),
-                "weekly_pct": st.column_config.NumberColumn("Weekly %", format="%.2f"),
-                "rs_score": st.column_config.NumberColumn("RS", format="%.1f"),
-                "atr_rs": st.column_config.NumberColumn("ATR RS", format="%.1f"),
-                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
-                "range_pos_20": st.column_config.NumberColumn("20D Range %", format="%.2f"),
-                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
-            }
+            hide_index=True
         )
 
 with tabs[2]:
     st.subheader("Consensus Scanner")
     if filtered_c.empty:
-        st.info("No overlap names yet. Consensus will populate after at least one stock appears in both scanners.")
+        st.info("No overlap names yet.")
     else:
         st.dataframe(
             filtered_c.round(2),
             use_container_width=True,
-            hide_index=True,
-            column_config={
-                "close": st.column_config.NumberColumn("Price", format="%.2f"),
-                "daily_pct": st.column_config.NumberColumn("Daily %", format="%.2f"),
-                "weekly_pct": st.column_config.NumberColumn("Weekly %", format="%.2f"),
-                "rs_score": st.column_config.NumberColumn("RS", format="%.1f"),
-                "atr_rs": st.column_config.NumberColumn("ATR RS", format="%.1f"),
-                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
-                "range_pos_20": st.column_config.NumberColumn("20D Range %", format="%.2f"),
-                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
-            }
+            hide_index=True
         )
 
 with tabs[3]:
