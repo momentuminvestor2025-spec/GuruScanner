@@ -5,6 +5,7 @@ from services.universe import load_nifty500_universe
 from services.market_data import fetch_history
 from services.indicators import build_row
 
+
 st.set_page_config(page_title='Guru Scanner', page_icon='📈', layout='wide')
 inject_global_styles()
 
@@ -24,8 +25,15 @@ with st.sidebar:
 if refresh:
     st.cache_data.clear()
 
-with st.spinner('Loading Nifty 500 universe...'):
+st.write("Loading Nifty 500 universe...")
+
+try:
     universe = load_nifty500_universe()
+    st.success(f"Universe loaded: {len(universe)} stocks")
+except Exception as e:
+    st.error("Failed to load Nifty 500 universe.")
+    st.exception(e)
+    st.stop()
 
 universe = universe.head(universe_limit)
 rows = []
