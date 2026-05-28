@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import streamlit as st
 
+from components.styles import inject_global_styles, render_hero, section_header, sidebar_brand
 from services.universe import load_selected_universe
 from services.universe_filters import filter_to_selected_universe
 from services.indicators import compute_metrics
@@ -15,26 +16,7 @@ from services.export_utils import dataframe_to_csv_bytes
 from services.liquidity import apply_liquidity_filters, get_default_liquidity_profile
 
 st.set_page_config(page_title="Guru Scanner", layout="wide")
-
-st.markdown("""
-<style>
-div[data-testid="metric-container"] {
-    background: #f8fafc;
-    border: 1px solid #e5e7eb;
-    padding: 10px 14px;
-    border-radius: 14px;
-}
-div[data-testid="metric-container"] label {
-    color: #64748b !important;
-}
-.block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.title("Guru Scanner")
+inject_global_styles()
 
 price_file = "data/latest_prices.csv"
 
@@ -53,14 +35,19 @@ except pd.errors.EmptyDataError:
     st.stop()
 
 with st.sidebar:
-    st.header("Filters")
+    sidebar_brand()
+    st.markdown("<div class='mini-note'>Configure universe, liquidity, and sector filters.</div>", unsafe_allow_html=True)
+
     universe_mode = st.selectbox(
         "Universe",
         options=["Nifty 500", "Nifty 750 (Total Market)"],
         index=0
     )
 
-    strict_liquidity = st.checkbox("Strict liquidity mode", value=(universe_mode == "Nifty 750 (Total Market)"))
+    strict_liquidity = st.checkbox(
+        "Strict liquidity mode",
+        value=(universe_mode == "Nifty 750 (Total Market)")
+    )
     enable_liquidity = st.checkbox("Enable liquidity filters", value=True)
 
 selected_universe = load_selected_universe(universe_mode)
@@ -118,10 +105,16 @@ top_sectors = (
     .head(10)
 )
 
+leaders = filtered_metrics.sort_values(["rs_score", "dist_52w_high_pct"], ascending=[False, True]).head(12)
 unknown_count = int((filtered_metrics["company"] == "Unknown Company").sum())
 
-st.caption(f"Cache-first scanner mode — {universe_mode} filtered from full NSE source")
-st.markdown("### Dashboard")
+render_hero(universe_mode)
+
+section_header(
+    "Dashboard",
+    "Market Overview",
+    "Track source coverage, universe filtering, liquidity pruning, and scanner hit rates."
+)
 
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Universe Constituents", len(selected_universe), border=True)
@@ -136,10 +129,14 @@ a2.metric("M Matches", len(m_screen), border=True)
 a3.metric("Consensus", len(c_screen), border=True)
 a4.metric("Unknown Mappings", unknown_count, border=True)
 
-summary_left, summary_right = st.columns([2, 1])
+left, right = st.columns([2.1, 1])
 
-with summary_left:
-    st.subheader("Sector Strength")
+with left:
+    section_header(
+        "Breadth",
+        "Sector Strength",
+        "Most represented sectors by surviving liquid names, ranked with average RS."
+    )
     if top_sectors.empty:
         st.info("No sector summary available.")
     else:
@@ -152,115 +149,10 @@ with summary_left:
             }
         )
 
-with summary_right:
-    st.subheader("Liquidity Rules")
-    st.write(f"Min Price: {min_price:,.2f}")
-    st.write(f"Min 20D Avg Volume: {int(min_avg_volume_20):,}")
-    st.write(f"Min 20D Avg Traded Value: {int(min_avg_traded_value_20):,}")
-
-    st.subheader("Export")
-    st.download_button(
-        label=f"Download Qullamaggie CSV ({universe_mode})",
-        data=dataframe_to_csv_bytes(q_screen),
-        file_name=f"qullamaggie_{universe_mode.lower().replace(' ', '_').replace('(', '').replace(')', '')}.csv",
-        mime="text/csv",
-        use_container_width=True
+with right:
+    section_header(
+        "Controls",
+        "Liquidity Rules",
+        "Current execution-quality guardrails applied before scanners run."
     )
-    st.download_button(
-        label=f"Download Minervini CSV ({universe_mode})",
-        data=dataframe_to_csv_bytes(m_screen),
-        file_name=f"minervini_{universe_mode.lower().replace(' ', '_').replace('(', '').replace(')', '')}.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
-    st.download_button(
-        label=f"Download Consensus CSV ({universe_mode})",
-        data=dataframe_to_csv_bytes(c_screen),
-        file_name=f"consensus_{universe_mode.lower().replace(' ', '_').replace('(', '').replace(')', '')}.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
-    st.download_button(
-        label=f"Download Metrics CSV ({universe_mode})",
-        data=dataframe_to_csv_bytes(filtered_metrics),
-        file_name=f"metrics_{universe_mode.lower().replace(' ', '_').replace('(', '').replace(')', '')}.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
-
-tabs = st.tabs([
-    "Qullamaggie",
-    "Minervini",
-    "Consensus",
-    "Metrics Preview",
-    "Filtered Price Preview",
-])
-
-scanner_cols = [
-    "symbol", "company", "sector", "close", "daily_pct", "weekly_pct",
-    "avg_volume_20", "avg_traded_value_20",
-    "rs_score", "atr_rs", "dist_52w_high_pct", "range_pos_20",
-    "volume_surge", "badge"
-]
-
-with tabs[0]:
-    st.subheader(f"Qullamaggie Scanner — {universe_mode}")
-    if q_screen.empty:
-        st.info("No Qullamaggie matches yet.")
-    else:
-        st.dataframe(
-            q_screen[scanner_cols].round(2),
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "close": st.column_config.NumberColumn("Price", format="%.2f"),
-                "daily_pct": st.column_config.NumberColumn("Daily %", format="%.2f"),
-                "weekly_pct": st.column_config.NumberColumn("Weekly %", format="%.2f"),
-                "avg_volume_20": st.column_config.NumberColumn("20D Avg Vol", format="%.0f"),
-                "avg_traded_value_20": st.column_config.NumberColumn("20D Avg Traded Value", format="%.0f"),
-                "rs_score": st.column_config.NumberColumn("RS", format="%.1f"),
-                "atr_rs": st.column_config.NumberColumn("ATR RS", format="%.1f"),
-                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
-                "range_pos_20": st.column_config.NumberColumn("20D Range %", format="%.2f"),
-                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
-            }
-        )
-
-with tabs[1]:
-    st.subheader(f"Minervini Scanner — {universe_mode}")
-    if m_screen.empty:
-        st.info("No Minervini matches yet.")
-    else:
-        st.dataframe(
-            m_screen[scanner_cols].round(2),
-            use_container_width=True,
-            hide_index=True
-        )
-
-with tabs[2]:
-    st.subheader(f"Consensus Scanner — {universe_mode}")
-    if c_screen.empty:
-        st.info("No overlap names yet.")
-    else:
-        st.dataframe(
-            c_screen.round(2),
-            use_container_width=True,
-            hide_index=True
-        )
-
-with tabs[3]:
-    st.subheader(f"Metrics Preview — {universe_mode}")
-    metrics_cols = [
-        "symbol", "company", "sector", "close",
-        "avg_volume_20", "avg_traded_value_20",
-        "ema10", "sma20", "sma50", "sma100", "sma200",
-        "daily_pct", "weekly_pct",
-        "rs_score", "atr_rs",
-        "dist_52w_high_pct", "range_pos_20",
-        "volume_surge", "ma_aligned", "green_day", "near_high"
-    ]
-    st.dataframe(filtered_metrics[metrics_cols].round(2), use_container_width=True, hide_index=True)
-
-with tabs[4]:
-    st.subheader(f"Filtered Price Preview — {universe_mode}")
-    st.dataframe(history_filtered.head(100), use_container_width=True, hide_index=True)
+    st.write(f"**Min Price:** {
