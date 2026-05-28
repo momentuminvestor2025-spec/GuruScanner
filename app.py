@@ -2,6 +2,13 @@ import streamlit as st
 from services.universe import load_nifty500_universe
 from services.market_data import fetch_one_symbol_debug
 
+from pathlib import Path
+import appdirs as ad
+
+CACHE_DIR = ".cache"
+ad.user_cache_dir = lambda *args: CACHE_DIR
+Path(CACHE_DIR).mkdir(exist_ok=True)
+
 st.set_page_config(page_title="Guru Scanner", layout="wide")
 
 st.title("Guru Scanner")
