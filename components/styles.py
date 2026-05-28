@@ -1,4 +1,4 @@
-import streamlit as st
+    import streamlit as st
 
 
 def inject_global_styles():
@@ -21,13 +21,17 @@ def inject_global_styles():
     }
 
     .stApp {
-        background: var(--bg);
+        background:
+            radial-gradient(circle at top left, rgba(79,141,247,0.08), transparent 20%),
+            radial-gradient(circle at top right, rgba(139,92,246,0.06), transparent 18%),
+            linear-gradient(180deg, #f7f9fc 0%, #f3f6fb 100%);
         color: var(--text);
     }
 
     [data-testid="stSidebar"] {
-        background: #ffffff;
-        border-right: 1px solid var(--border);
+        background: rgba(255,255,255,0.88);
+        border-right: 1px solid rgba(231,235,243,0.9);
+        backdrop-filter: blur(12px);
     }
 
     .block-container {
@@ -67,6 +71,7 @@ def inject_global_styles():
         font-weight: 800;
         font-size: 0.9rem;
         background: #eef4ff;
+        box-shadow: 0 8px 20px rgba(79,141,247,0.12);
     }
 
     .topbar-name {
@@ -87,11 +92,15 @@ def inject_global_styles():
     }
 
     .stat-card {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 0.75rem 0.95rem;
-        min-height: 92px;
+        background: rgba(255,255,255,0.9);
+        border: 1px solid rgba(231,235,243,0.95);
+        border-radius: 16px;
+        padding: 0.8rem 1rem;
+        min-height: 96px;
+        box-shadow:
+            0 10px 30px rgba(15, 23, 42, 0.05),
+            inset 0 1px 0 rgba(255,255,255,0.8);
+        backdrop-filter: blur(10px);
     }
 
     .stat-label {
@@ -116,56 +125,103 @@ def inject_global_styles():
         font-size: 0.8rem;
     }
 
-    .stat-accent-blue { box-shadow: inset 0 0 0 1px rgba(79,141,247,0.04); }
-    .stat-accent-purple { box-shadow: inset 0 0 0 1px rgba(139,92,246,0.04); }
-    .stat-accent-green { box-shadow: inset 0 0 0 1px rgba(16,185,129,0.04); }
-    .stat-accent-amber { box-shadow: inset 0 0 0 1px rgba(245,158,11,0.04); }
-    .stat-accent-red { box-shadow: inset 0 0 0 1px rgba(239,68,68,0.04); }
+    .stat-accent-blue { box-shadow: inset 0 0 0 1px rgba(79,141,247,0.04), 0 10px 28px rgba(79,141,247,0.06); }
+    .stat-accent-purple { box-shadow: inset 0 0 0 1px rgba(139,92,246,0.04), 0 10px 28px rgba(139,92,246,0.06); }
+    .stat-accent-green { box-shadow: inset 0 0 0 1px rgba(16,185,129,0.04), 0 10px 28px rgba(16,185,129,0.06); }
+    .stat-accent-amber { box-shadow: inset 0 0 0 1px rgba(245,158,11,0.04), 0 10px 28px rgba(245,158,11,0.06); }
+    .stat-accent-red { box-shadow: inset 0 0 0 1px rgba(239,68,68,0.04), 0 10px 28px rgba(239,68,68,0.06); }
 
     .mini-strip {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 0.55rem 0.85rem;
+        background: transparent;
+        border: none;
+        padding: 0.15rem 0;
         margin-top: 0.55rem;
-        margin-bottom: 0.45rem;
+        margin-bottom: 0.55rem;
     }
 
     .mini-box {
-        display: flex;
-        flex-direction: column;
-        gap: 0.08rem;
+        position: relative;
+        overflow: hidden;
+        border-radius: 18px;
+        padding: 0.95rem 1rem 0.9rem 1rem;
+        min-height: 108px;
+        background:
+            radial-gradient(circle at top left, rgba(255,255,255,0.16), transparent 32%),
+            linear-gradient(145deg, #0f1c36 0%, #0a1730 45%, #081224 100%);
+        border: 1px solid rgba(98, 139, 255, 0.16);
+        box-shadow:
+            0 18px 35px rgba(8, 18, 36, 0.22),
+            inset 0 1px 0 rgba(255,255,255,0.08),
+            inset 0 -1px 0 rgba(255,255,255,0.03);
+        transform: translateY(0);
+    }
+
+    .mini-box::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 18px;
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.10), transparent 28%),
+            radial-gradient(circle at top right, rgba(79,141,247,0.18), transparent 26%);
+        pointer-events: none;
     }
 
     .mini-label {
-        color: var(--muted);
+        position: relative;
+        z-index: 1;
+        color: rgba(226,232,240,0.82);
         font-size: 0.68rem;
         text-transform: uppercase;
-        font-weight: 700;
-        letter-spacing: 0.04em;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.35rem;
     }
 
     .mini-value {
-        color: var(--text);
-        font-size: 1rem;
+        position: relative;
+        z-index: 1;
+        font-size: 1.9rem;
         font-weight: 800;
+        line-height: 1.05;
+        margin-bottom: 0.25rem;
+        letter-spacing: -0.03em;
+        color: #f8fafc;
+        text-shadow: 0 3px 14px rgba(0,0,0,0.22);
     }
 
     .mini-sub {
-        color: var(--muted-2);
-        font-size: 0.74rem;
+        position: relative;
+        z-index: 1;
+        color: rgba(203,213,225,0.75);
+        font-size: 0.82rem;
+        line-height: 1.25;
     }
 
-    .mini-pos { color: var(--green); }
-    .mini-neg { color: var(--red); }
-    .mini-neutral { color: var(--amber); }
+    .mini-pos {
+        color: #22e6a3;
+        text-shadow: 0 0 16px rgba(34,230,163,0.18);
+    }
+
+    .mini-neg {
+        color: #ff6b6b;
+        text-shadow: 0 0 16px rgba(255,107,107,0.16);
+    }
+
+    .mini-neutral {
+        color: #ffbe5c;
+        text-shadow: 0 0 16px rgba(255,190,92,0.16);
+    }
 
     .tab-card {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 0.9rem 0.95rem 0.7rem 0.95rem;
+        background: rgba(255,255,255,0.92);
+        border: 1px solid rgba(231,235,243,0.95);
+        border-radius: 16px;
+        padding: 0.95rem 1rem 0.8rem 1rem;
         margin-bottom: 0.8rem;
+        box-shadow:
+            0 10px 30px rgba(15,23,42,0.05),
+            inset 0 1px 0 rgba(255,255,255,0.8);
     }
 
     .tab-label {
@@ -189,27 +245,34 @@ def inject_global_styles():
         font-size: 0.86rem;
     }
 
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.3rem;
+    }
+
     button[role="tab"] {
-        background: transparent !important;
+        background: rgba(255,255,255,0.66) !important;
         color: var(--muted) !important;
-        border-radius: 10px !important;
-        padding: 0.45rem 0.9rem !important;
+        border-radius: 11px !important;
+        padding: 0.5rem 0.95rem !important;
         font-weight: 700 !important;
-        border: 1px solid transparent !important;
-        margin-right: 0.2rem !important;
+        border: 1px solid rgba(231,235,243,0.9) !important;
+        margin-right: 0.15rem !important;
+        box-shadow: none !important;
     }
 
     button[role="tab"][aria-selected="true"] {
         color: var(--text) !important;
-        background: #f8fafc !important;
-        border: 1px solid var(--border) !important;
+        background: #ffffff !important;
+        border: 1px solid rgba(210,219,232,1) !important;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06) !important;
     }
 
     div[data-testid="stDataFrame"] {
-        border: 1px solid var(--border);
-        border-radius: 14px;
+        border: 1px solid rgba(231,235,243,0.95);
+        border-radius: 16px;
         overflow: hidden;
-        background: white;
+        background: rgba(255,255,255,0.95);
+        box-shadow: 0 10px 28px rgba(15,23,42,0.04);
     }
 
     div[data-testid="stDataFrame"] [role="columnheader"] {
@@ -237,6 +300,7 @@ def inject_global_styles():
         font-size: 0.73rem;
         font-weight: 700;
         border: 1px solid transparent;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
     }
 
     .pill-blue { background: #eef4ff; color: #336ad4; border-color: #d8e7ff; }
@@ -247,32 +311,34 @@ def inject_global_styles():
 
     .stDownloadButton button,
     .stButton button {
-        border-radius: 10px !important;
-        border: 1px solid var(--border) !important;
-        background: #ffffff !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(231,235,243,0.95) !important;
+        background: rgba(255,255,255,0.92) !important;
         color: var(--text) !important;
         font-weight: 700 !important;
-        box-shadow: none !important;
+        box-shadow: 0 8px 20px rgba(15,23,42,0.05) !important;
     }
 
     .stTextInput input,
     .stNumberInput input,
     div[data-baseweb="select"] > div,
     div[data-baseweb="input"] > div {
-        background: #ffffff !important;
+        background: rgba(255,255,255,0.9) !important;
         color: var(--text) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: 10px !important;
-        box-shadow: none !important;
+        border: 1px solid rgba(231,235,243,0.95) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 6px 18px rgba(15,23,42,0.03) !important;
     }
 
     div[data-testid="metric-container"] {
-        background: #ffffff;
-        border: 1px solid var(--border);
-        border-radius: 14px;
+        background: rgba(255,255,255,0.95);
+        border: 1px solid rgba(231,235,243,0.95);
+        border-radius: 16px;
         padding: 0.8rem 0.9rem;
         min-height: 94px;
-        box-shadow: none;
+        box-shadow:
+            0 10px 28px rgba(15,23,42,0.04),
+            inset 0 1px 0 rgba(255,255,255,0.75);
     }
 
     div[data-testid="metric-container"] label {
@@ -290,11 +356,12 @@ def inject_global_styles():
     }
 
     .overview-panel {
-        background: #ffffff;
-        border: 1px solid var(--border);
-        border-radius: 14px;
+        background: rgba(255,255,255,0.92);
+        border: 1px solid rgba(231,235,243,0.95);
+        border-radius: 16px;
         padding: 0.85rem 0.95rem;
         margin-bottom: 0.8rem;
+        box-shadow: 0 10px 28px rgba(15,23,42,0.04);
     }
 
     .sidebar-brand {
