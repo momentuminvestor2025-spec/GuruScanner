@@ -10,21 +10,40 @@ st.set_page_config(page_title="Guru Scanner", layout="wide")
 st.title("Guru Scanner")
 st.caption("Nifty 500 universe loader with Yahoo Finance data and scanner filters.")
 
+batch_size = st.sidebar.slider("Universe batch size", 1, 100, 5, 1)
+
 st.write("Loading Nifty 500 universe...")
 universe = load_nifty500_universe()
 st.success(f"Universe loaded: {len(universe)} stocks")
 
-batch_size = st.sidebar.slider("Universe batch size", 20, 200, 60, 10)
 selected = universe.head(batch_size).copy()
 
+st.subheader("Selected Universe Preview")
+st.dataframe(selected, use_container_width=True, hide_index=True)
+
+symbols = selected["yf_symbol"].tolist()
+st.write("Yahoo symbols being fetched:")
+st.write(symbols)
+
 st.write("Fetching Yahoo Finance price history...")
-history = fetch_history(selected["yf_symbol"].tolist(), period="1y", interval="1d", batch_size=25)
+history = fetch_history(symbols, period="6mo", interval="1d", batch_size=5)
 
 if history.empty:
     st.error("No price history returned from Yahoo Finance.")
     st.stop()
 
+st.success(f"History rows fetched: {len(history)}")
+
+st.subheader("Raw History Preview")
+st.dataframe(history.head(20), use_container_width=True, hide_index=True)
+
 metrics = compute_metrics(history, selected)
+
+if metrics.empty:
+    st.warning("Metrics dataframe is empty.")
+    st.stop()
+
+st.success(f"Metrics rows created: {len(metrics)}")
 
 st.subheader("Metrics Preview")
 st.dataframe(
@@ -35,10 +54,3 @@ st.dataframe(
     use_container_width=True,
     hide_index=True
 )
-
-st.subheader("Quick Stats")
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Universe Loaded", len(selected))
-c2.metric("Visible Rows", len(metrics))
-c3.metric("Data Source", "Nifty CSV + Yahoo")
-c4.metric("Active View", "Dashboard")
