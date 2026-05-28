@@ -29,6 +29,7 @@ def compute_metrics(price_df: pd.DataFrame, universe_df: pd.DataFrame) -> pd.Dat
         raise ValueError(f"Missing required columns in price file: {sorted(missing)}")
 
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
     numeric_cols = ["open", "high", "low", "close", "volume"]
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -87,7 +88,9 @@ def compute_metrics(price_df: pd.DataFrame, universe_df: pd.DataFrame) -> pd.Dat
     df["true_range"] = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
     df["atr_14"] = grouped["true_range"].transform(lambda s: s.rolling(14, min_periods=1).mean())
 
+    df["traded_value"] = df["close"] * df["volume"]
     df["avg_volume_20"] = grouped["volume"].transform(lambda s: s.rolling(20, min_periods=1).mean())
+    df["avg_traded_value_20"] = grouped["traded_value"].transform(lambda s: s.rolling(20, min_periods=1).mean())
     df["volume_surge"] = np.where(df["avg_volume_20"] > 0, df["volume"] / df["avg_volume_20"], np.nan)
 
     latest = df.groupby("yf_symbol").tail(1).copy()
@@ -123,11 +126,12 @@ def compute_metrics(price_df: pd.DataFrame, universe_df: pd.DataFrame) -> pd.Dat
 
     ordered_cols = [
         "date", "symbol", "company", "sector", "yf_symbol",
-        "open", "high", "low", "close", "volume",
+        "open", "high", "low", "close", "volume", "traded_value",
+        "avg_volume_20", "avg_traded_value_20",
         "daily_pct", "weekly_pct",
         "ret_1m", "ret_3m", "ret_6m", "ret_12m",
         "ema10", "sma20", "sma50", "sma100", "sma200",
-        "atr_14", "atr_rs", "avg_volume_20", "volume_surge",
+        "atr_14", "atr_rs", "volume_surge",
         "high_252", "dist_52w_high_pct", "range_pos_20",
         "rs_raw", "rs_score", "ma_aligned", "near_high", "green_day"
     ]
