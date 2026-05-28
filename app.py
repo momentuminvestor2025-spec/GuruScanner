@@ -32,7 +32,7 @@ inject_global_styles()
 
 
 @st.cache_data(ttl=300, show_spinner=False)
-def get_nse_market_strip(metrics_after_liquidity_value: int):
+def get_nse_market_strip(metrics_after_liquidity_value: int, filtered_metrics_df: pd.DataFrame):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -47,12 +47,27 @@ def get_nse_market_strip(metrics_after_liquidity_value: int):
         "INDIA VIX": "Nifty India Vix",
     }
 
+    adv = 0
+    dec = 0
+    ad_ratio = None
+
+    if not filtered_metrics_df.empty and "daily_pct" in filtered_metrics_df.columns:
+        daily_pct_series = pd.to_numeric(filtered_metrics_df["daily_pct"], errors="coerce")
+        adv = int((daily_pct_series > 0).sum())
+        dec = int((daily_pct_series < 0).sum())
+        ad_ratio = round((adv / dec), 2) if dec > 0 else None
+
     fallback = [
         {"label": "Nifty 50", "value": "NA", "sub": "Unavailable", "tone": "mini-neutral"},
         {"label": "Nifty Smallcap 250", "value": "NA", "sub": "Unavailable", "tone": "mini-neutral"},
         {"label": "NIFTY 500", "value": "NA", "sub": "Unavailable", "tone": "mini-neutral"},
         {"label": "Nifty India Vix", "value": "NA", "sub": "Unavailable", "tone": "mini-neutral"},
-        {"label": "Breadth", "value": f"{metrics_after_liquidity_value:,}", "sub": "Liquid names surviving", "tone": "mini-pos"},
+        {
+            "label": "A/D Ratio",
+            "value": f"{ad_ratio:.2f}" if ad_ratio is not None else "NA",
+            "sub": f"{adv} adv / {dec} dec" if ad_ratio is not None else "Unavailable",
+            "tone": "mini-pos" if ad_ratio is not None and ad_ratio >= 1 else "mini-neg",
+        },
         {"label": "Risk Control", "value": "OK", "sub": "Liquidity filter active", "tone": "mini-pos"},
     ]
 
@@ -82,6 +97,7 @@ def get_nse_market_strip(metrics_after_liquidity_value: int):
                 pct = float(str(pct_value).replace("%", "").replace(",", "").strip())
             except Exception:
                 return "mini-neutral"
+
             if name == "INDIA VIX":
                 return "mini-neutral"
             if pct > 0:
@@ -112,10 +128,7 @@ def get_nse_market_strip(metrics_after_liquidity_value: int):
             pct_text_raw = str(pct).strip()
 
             if pct_text_raw not in ["NA", "None", "nan", ""]:
-                if pct_text_raw.startswith("-"):
-                    pct_text = f"{pct_text_raw}% today"
-                else:
-                    pct_text = f"+{pct_text_raw}% today"
+                pct_text = f"{pct_text_raw}% today" if pct_text_raw.startswith("-") else f"+{pct_text_raw}% today"
             else:
                 pct_text = "Unavailable"
 
@@ -126,20 +139,19 @@ def get_nse_market_strip(metrics_after_liquidity_value: int):
                 "tone": tone_for(raw_name, pct_text_raw),
             })
 
-        items.extend([
-            {
-                "label": "Breadth",
-                "value": f"{metrics_after_liquidity_value:,}",
-                "sub": "Liquid names surviving",
-                "tone": "mini-pos",
-            },
-            {
-                "label": "Risk Control",
-                "value": "OK",
-                "sub": "Liquidity filter active",
-                "tone": "mini-pos",
-            },
-        ])
+        items.append({
+            "label": "A/D Ratio",
+            "value": f"{ad_ratio:.2f}" if ad_ratio is not None else "NA",
+            "sub": f"{adv} adv / {dec} dec" if ad_ratio is not None else "Unavailable",
+            "tone": "mini-pos" if ad_ratio is not None and ad_ratio >= 1 else "mini-neg",
+        })
+
+        items.append({
+            "label": "Risk Control",
+            "value": "OK",
+            "sub": "Liquidity filter active",
+            "tone": "mini-pos",
+        })
 
         return items
 
@@ -230,7 +242,7 @@ metrics_liquid, metrics_before_liquidity, metrics_after_liquidity = apply_liquid
     enable_filter=enable_liquidity,
 )
 
-all_sectors = sorted(metrics_liquid["sector"].dropna().unique().tolist())
+all_sectors = sorted(metrics_liquid["sector"].dropna().unique().tolist()) if "sector" in metrics_liquid.columns else []
 
 with st.sidebar:
     search_text = st.text_input("Search symbol or company")
@@ -286,7 +298,7 @@ stat_cards = [
 ]
 render_stat_cards(stat_cards)
 
-market_strip_items = get_nse_market_strip(metrics_after_liquidity)
+market_strip_items = get_nse_market_strip(metrics_after_liquidity, filtered_metrics)
 render_market_strip(market_strip_items)
 
 overview_tab, q_tab, m_tab, c_tab, metrics_tab = st.tabs(
@@ -311,16 +323,19 @@ with overview_tab:
     left, right = st.columns([1.4, 1], gap="large")
 
     with left:
-        top_sectors = (
-            filtered_metrics.groupby("sector", dropna=False)
-            .agg(
-                stocks=("symbol", "count"),
-                avg_rs=("rs_score", "mean"),
+        if "sector" in filtered_metrics.columns and "symbol" in filtered_metrics.columns and "rs_score" in filtered_metrics.columns:
+            top_sectors = (
+                filtered_metrics.groupby("sector", dropna=False)
+                .agg(
+                    stocks=("symbol", "count"),
+                    avg_rs=("rs_score", "mean"),
+                )
+                .sort_values(["stocks", "avg_rs"], ascending=[False, False])
+                .reset_index()
+                .head(10)
             )
-            .sort_values(["stocks", "avg_rs"], ascending=[False, False])
-            .reset_index()
-            .head(10)
-        )
+        else:
+            top_sectors = pd.DataFrame()
 
         tab_header(
             "Breadth",
