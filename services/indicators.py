@@ -1,21 +1,34 @@
 import numpy as np
 import pandas as pd
 
-def compute_metrics(price_df, universe_df):
+
+def compute_metrics(price_df: pd.DataFrame, universe_df: pd.DataFrame) -> pd.DataFrame:
     if price_df.empty:
         return pd.DataFrame()
 
     df = price_df.copy()
-    df["date"] = pd.to_datetime(df["date"])
+    df.columns = [c.strip().lower() for c in df.columns]
+
+    required = {"date", "open", "high", "low", "close", "volume", "yf_symbol"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing required columns in price file: {sorted(missing)}")
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    numeric_cols = ["open", "high", "low", "close", "volume"]
+    for col in numeric_cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna(subset=["date", "close", "yf_symbol"]).copy()
     df = df.sort_values(["yf_symbol", "date"]).reset_index(drop=True)
 
     grouped = df.groupby("yf_symbol", group_keys=False)
 
     df["ema10"] = grouped["close"].transform(lambda s: s.ewm(span=10, adjust=False).mean())
-    df["sma20"] = grouped["close"].transform(lambda s: s.rolling(20).mean())
-    df["sma50"] = grouped["close"].transform(lambda s: s.rolling(50).mean())
-    df["sma100"] = grouped["close"].transform(lambda s: s.rolling(100).mean())
-    df["sma200"] = grouped["close"].transform(lambda s: s.rolling(200).mean())
+    df["sma20"] = grouped["close"].transform(lambda s: s.rolling(20, min_periods=1).mean())
+    df["sma50"] = grouped["close"].transform(lambda s: s.rolling(50, min_periods=1).mean())
+    df["sma100"] = grouped["close"].transform(lambda s: s.rolling(100, min_periods=1).mean())
+    df["sma200"] = grouped["close"].transform(lambda s: s.rolling(200, min_periods=1).mean())
 
     df["prev_close"] = grouped["close"].shift(1)
     df["close_5d"] = grouped["close"].shift(5)
@@ -31,46 +44,68 @@ def compute_metrics(price_df, universe_df):
     df["ret_6m"] = ((df["close"] / df["close_126d"]) - 1.0) * 100
     df["ret_12m"] = ((df["close"] / df["close_252d"]) - 1.0) * 100
 
-    df["high_252"] = grouped["high"].transform(lambda s: s.rolling(252).max())
-    df["low_20"] = grouped["low"].transform(lambda s: s.rolling(20).min())
-    df["high_20"] = grouped["high"].transform(lambda s: s.rolling(20).max())
+    df["high_252"] = grouped["high"].transform(lambda s: s.rolling(252, min_periods=1).max())
+    df["low_20"] = grouped["low"].transform(lambda s: s.rolling(20, min_periods=1).min())
+    df["high_20"] = grouped["high"].transform(lambda s: s.rolling(20, min_periods=1).max())
 
-    df["dist_52w_high_pct"] = ((df["high_252"] - df["close"]) / df["high_252"]) * 100
-    df["range_pos_20"] = ((df["close"] - df["low_20"]) / (df["high_20"] - df["low_20"])) * 100
+    df["dist_52w_high_pct"] = np.where(
+        df["high_252"] > 0,
+        ((df["high_252"] - df["close"]) / df["high_252"]) * 100,
+        np.nan,
+    )
+
+    df["range_pos_20"] = np.where(
+        (df["high_20"] - df["low_20"]) > 0,
+        ((df["close"] - df["low_20"]) / (df["high_20"] - df["low_20"])) * 100,
+        np.nan,
+    )
 
     tr1 = df["high"] - df["low"]
     tr2 = (df["high"] - df["prev_close"]).abs()
     tr3 = (df["low"] - df["prev_close"]).abs()
     df["true_range"] = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-    df["atr_14"] = grouped["true_range"].transform(lambda s: s.rolling(14).mean())
+    df["atr_14"] = grouped["true_range"].transform(lambda s: s.rolling(14, min_periods=1).mean())
 
-    df["avg_volume_20"] = grouped["volume"].transform(lambda s: s.rolling(20).mean())
-    df["volume_surge"] = df["volume"] / df["avg_volume_20"]
+    df["avg_volume_20"] = grouped["volume"].transform(lambda s: s.rolling(20, min_periods=1).mean())
+    df["volume_surge"] = np.where(df["avg_volume_20"] > 0, df["volume"] / df["avg_volume_20"], np.nan)
 
     latest = df.groupby("yf_symbol").tail(1).copy()
 
     latest["rs_raw"] = (
-        latest["ret_1m"].fillna(0) * 0.25 +
-        latest["ret_3m"].fillna(0) * 0.35 +
-        latest["ret_6m"].fillna(0) * 0.40
+        latest["ret_1m"].fillna(0) * 0.25
+        + latest["ret_3m"].fillna(0) * 0.35
+        + latest["ret_6m"].fillna(0) * 0.40
     )
 
-    latest["atr_rs_raw"] = latest["atr_14"].rank(pct=True) * 100
     latest["rs_score"] = latest["rs_raw"].rank(pct=True) * 100
+    latest["atr_rs"] = latest["atr_14"].rank(pct=True) * 100
 
-    out = latest.merge(
+    latest = latest.merge(
         universe_df[["symbol", "company", "sector", "yf_symbol"]],
         on="yf_symbol",
         how="left"
     )
 
-    cols = [
-        "symbol", "company", "sector", "yf_symbol", "date", "close", "daily_pct", "weekly_pct",
-        "ema10", "sma20", "sma50", "sma100", "sma200",
+    latest["ma_aligned"] = (
+        (latest["close"] >= latest["ema10"]) &
+        (latest["ema10"] >= latest["sma20"]) &
+        (latest["sma20"] >= latest["sma50"]) &
+        (latest["sma50"] >= latest["sma100"]) &
+        (latest["sma100"] >= latest["sma200"])
+    )
+
+    latest["near_high"] = latest["dist_52w_high_pct"] <= 25
+    latest["green_day"] = latest["daily_pct"].fillna(-999) >= 0
+
+    ordered_cols = [
+        "date", "symbol", "company", "sector", "yf_symbol",
+        "open", "high", "low", "close", "volume",
+        "daily_pct", "weekly_pct",
         "ret_1m", "ret_3m", "ret_6m", "ret_12m",
+        "ema10", "sma20", "sma50", "sma100", "sma200",
+        "atr_14", "atr_rs", "avg_volume_20", "volume_surge",
         "high_252", "dist_52w_high_pct", "range_pos_20",
-        "atr_14", "atr_rs_raw", "avg_volume_20", "volume_surge", "rs_score"
+        "rs_raw", "rs_score", "ma_aligned", "near_high", "green_day"
     ]
 
-    out = out[cols].sort_values("rs_score", ascending=False).reset_index(drop=True)
-    return out
+    return latest[ordered_cols].sort_values("rs_score", ascending=False).reset_index(drop=True)
