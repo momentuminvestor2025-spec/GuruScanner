@@ -377,6 +377,144 @@ def inject_global_styles():
             font-size: 0.8rem;
             margin-bottom: 1rem;
         }
+
+        .breadth-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 0.35rem;
+        }
+
+        .breadth-card {
+            position: relative;
+            overflow: hidden;
+            min-height: 320px;
+            border-radius: 18px;
+            padding: 1rem 1rem 0.95rem 1rem;
+            background:
+                radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(79,141,247,0.10), transparent 24%),
+                linear-gradient(145deg, #0f1c36 0%, #0a1730 48%, #081224 100%);
+            border: 1px solid rgba(98, 139, 255, 0.14);
+            box-shadow:
+                0 22px 40px rgba(8,18,36,0.20),
+                inset 0 1px 0 rgba(255,255,255,0.08),
+                inset 0 -1px 0 rgba(255,255,255,0.03);
+        }
+
+        .breadth-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent 25%);
+            pointer-events: none;
+        }
+
+        .breadth-card-title {
+            position: relative;
+            z-index: 1;
+            color: #f8fafc;
+            font-size: 0.96rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .breadth-big {
+            position: relative;
+            z-index: 1;
+            color: #22e6a3;
+            font-size: 2.1rem;
+            font-weight: 800;
+            line-height: 1.05;
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        .breadth-big.neg-text {
+            color: #ff6b6b;
+        }
+
+        .breadth-big-sub {
+            position: relative;
+            z-index: 1;
+            color: rgba(203,213,225,0.75);
+            font-size: 0.88rem;
+            text-align: center;
+            margin-top: 0.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .breadth-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 0.7rem;
+        }
+
+        .breadth-stat {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 14px;
+            padding: 0.85rem 0.85rem;
+        }
+
+        .breadth-stat-label {
+            color: rgba(203,213,225,0.70);
+            font-size: 0.70rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 0.28rem;
+        }
+
+        .breadth-stat-value {
+            color: #f8fafc;
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+
+        .breadth-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+            margin-top: 0.4rem;
+        }
+
+        .breadth-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            color: rgba(226,232,240,0.88);
+            font-size: 0.92rem;
+            padding-bottom: 0.45rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .breadth-row:last-child {
+            border-bottom: none;
+        }
+
+        .breadth-row-left {
+            color: rgba(203,213,225,0.82);
+        }
+
+        .breadth-row-right {
+            color: #f8fafc;
+            font-weight: 700;
+        }
+
+        .pos-text { color: #22e6a3; font-weight: 700; }
+        .neg-text { color: #ff6b6b; font-weight: 700; }
+        .neu-text { color: #ffbe5c; font-weight: 700; }
+
+        @media (max-width: 1200px) {
+            .breadth-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -464,3 +602,19 @@ def render_pill_row(pills):
         html += f"<span class='pill {cls}'>{text}</span>"
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
+
+
+def render_breadth_section_css():
+    return None
+
+
+def render_breadth_card(title, body_html):
+    st.markdown(
+        f"""
+        <div class="breadth-card">
+            <div class="breadth-card-title">{title}</div>
+            {body_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
