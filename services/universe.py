@@ -7,12 +7,23 @@ import streamlit as st
 NIFTY_500_CSV_URL = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0",
     "Accept": "text/csv,application/json,text/plain,*/*",
-    "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://www.nseindia.com/",
     "Connection": "keep-alive",
 }
+
+def _normalize_symbol(value: str) -> str:
+    if pd.isna(value):
+        return ""
+    return (
+        str(value)
+        .strip()
+        .upper()
+        .replace("&", "")
+        .replace("-", "")
+        .replace(" ", "")
+    )
 
 @st.cache_data(ttl=60 * 60 * 12, show_spinner=False)
 def load_nifty500_universe():
@@ -44,7 +55,9 @@ def load_nifty500_universe():
             if "sector" not in df.columns:
                 df["sector"] = "Unknown"
 
-            df["symbol"] = df["symbol"].astype(str).str.strip().str.upper()
+            df["symbol"] = df["symbol"].astype(str).map(_normalize_symbol)
+            df["company"] = df["company"].astype(str).str.strip()
+            df["sector"] = df["sector"].astype(str).str.strip()
             df["yf_symbol"] = df["symbol"] + ".NS"
 
             return df[["symbol", "company", "sector", "yf_symbol"]].drop_duplicates()
@@ -56,6 +69,8 @@ def load_nifty500_universe():
                 break
 
     fallback = pd.read_csv("data/nifty500_fallback.csv")
-    fallback["symbol"] = fallback["symbol"].astype(str).str.strip().str.upper()
+    fallback["symbol"] = fallback["symbol"].astype(str).map(_normalize_symbol)
+    fallback["company"] = fallback["company"].astype(str).str.strip()
+    fallback["sector"] = fallback["sector"].astype(str).str.strip()
     fallback["yf_symbol"] = fallback["symbol"] + ".NS"
     return fallback[["symbol", "company", "sector", "yf_symbol"]].drop_duplicates()
