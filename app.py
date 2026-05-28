@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 
 from services.universe import load_nifty500_universe
+from services.universe_filters import filter_to_nifty500_universe
 from services.indicators import compute_metrics
 from services.scanners import (
     run_qullamaggie_screen,
@@ -33,7 +34,7 @@ div[data-testid="metric-container"] label {
 """, unsafe_allow_html=True)
 
 st.title("Guru Scanner")
-st.caption("Cache-first scanner mode")
+st.caption("Cache-first scanner mode — Nifty 500 filtered from full NSE source")
 
 price_file = "data/latest_prices.csv"
 
@@ -52,10 +53,17 @@ except pd.errors.EmptyDataError:
     st.stop()
 
 universe = load_nifty500_universe()
-metrics = compute_metrics(history, universe)
+
+history_n500, source_rows, nifty500_rows = filter_to_nifty500_universe(history, universe)
+
+if history_n500.empty:
+    st.error("No Nifty 500 rows found in latest_prices.csv after filtering.")
+    st.stop()
+
+metrics = compute_metrics(history_n500, universe)
 
 if metrics.empty:
-    st.warning("Metrics dataframe is empty.")
+    st.warning("Metrics dataframe is empty after Nifty 500 filtering.")
     st.stop()
 
 q_screen = run_qullamaggie_screen(metrics)
@@ -90,14 +98,14 @@ unknown_count = int((filtered_metrics["company"] == "Unknown Company").sum())
 st.markdown("### Dashboard")
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Universe", len(universe), border=True)
-k2.metric("Price Rows", len(history), border=True)
-k3.metric("Q Matches", len(filtered_q), border=True)
-k4.metric("M Matches", len(filtered_m), border=True)
+k2.metric("Source NSE Rows", source_rows, border=True)
+k3.metric("Nifty500 Rows Used", nifty500_rows, border=True)
+k4.metric("Q Matches", len(filtered_q), border=True)
 k5.metric("Consensus", len(filtered_c), border=True)
 
 a1, a2, a3 = st.columns(3)
 a1.metric("Metrics Rows", len(filtered_metrics), border=True)
-a2.metric("Top Sector Count", len(top_sectors), border=True)
+a2.metric("M Matches", len(filtered_m), border=True)
 a3.metric("Unknown Mappings", unknown_count, border=True)
 
 summary_left, summary_right = st.columns([2, 1])
@@ -152,7 +160,7 @@ tabs = st.tabs([
     "Minervini",
     "Consensus",
     "Metrics Preview",
-    "Raw Price Preview",
+    "Filtered Price Preview",
 ])
 
 scanner_cols = [
@@ -166,43 +174,21 @@ with tabs[0]:
     if filtered_q.empty:
         st.info("No Qullamaggie matches yet.")
     else:
-        st.dataframe(
-            filtered_q[scanner_cols].round(2),
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "close": st.column_config.NumberColumn("Price", format="%.2f"),
-                "daily_pct": st.column_config.NumberColumn("Daily %", format="%.2f"),
-                "weekly_pct": st.column_config.NumberColumn("Weekly %", format="%.2f"),
-                "rs_score": st.column_config.NumberColumn("RS", format="%.1f"),
-                "atr_rs": st.column_config.NumberColumn("ATR RS", format="%.1f"),
-                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
-                "range_pos_20": st.column_config.NumberColumn("20D Range %", format="%.2f"),
-                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
-            }
-        )
+        st.dataframe(filtered_q[scanner_cols].round(2), use_container_width=True, hide_index=True)
 
 with tabs[1]:
     st.subheader("Minervini Scanner")
     if filtered_m.empty:
         st.info("No Minervini matches yet.")
     else:
-        st.dataframe(
-            filtered_m[scanner_cols].round(2),
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(filtered_m[scanner_cols].round(2), use_container_width=True, hide_index=True)
 
 with tabs[2]:
     st.subheader("Consensus Scanner")
     if filtered_c.empty:
         st.info("No overlap names yet.")
     else:
-        st.dataframe(
-            filtered_c.round(2),
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(filtered_c.round(2), use_container_width=True, hide_index=True)
 
 with tabs[3]:
     st.subheader("Metrics Preview")
@@ -214,12 +200,8 @@ with tabs[3]:
         "dist_52w_high_pct", "range_pos_20",
         "volume_surge", "ma_aligned", "green_day", "near_high"
     ]
-    st.dataframe(
-        filtered_metrics[metrics_cols].round(2),
-        use_container_width=True,
-        hide_index=True
-    )
+    st.dataframe(filtered_metrics[metrics_cols].round(2), use_container_width=True, hide_index=True)
 
 with tabs[4]:
-    st.subheader("Raw Price Preview")
-    st.dataframe(history.head(100), use_container_width=True, hide_index=True)
+    st.subheader("Filtered Price Preview")
+    st.dataframe(history_n500.head(100), use_container_width=True, hide_index=True)
