@@ -38,7 +38,11 @@ if os.path.getsize(price_file) == 0:
     st.error("latest_prices.csv exists but is empty. Please regenerate the file.")
     st.stop()
 
-history = pd.read_csv(price_file)
+try:
+    history = pd.read_csv(price_file)
+except pd.errors.EmptyDataError:
+    st.error("latest_prices.csv has no valid CSV content. Please regenerate it.")
+    st.stop()
 
 with st.sidebar:
     sidebar_brand()
@@ -53,7 +57,8 @@ with st.sidebar:
         "Strict liquidity mode",
         value=(universe_mode == "Nifty 750 (Total Market)")
     )
-    enable_liquidity = st.checkbox("Enable liquidity filters", value=True)
+
+    enable_liquidity = st.checkbox("Enable Liquidity Filters", value=True)
 
 selected_universe = load_selected_universe(universe_mode)
 
@@ -75,9 +80,26 @@ if metrics.empty:
 defaults = get_default_liquidity_profile(universe_mode, strict_liquidity)
 
 with st.sidebar:
-    min_price = st.number_input("Min Price", min_value=1.0, value=float(defaults["min_price"]), step=5.0)
-    min_avg_volume_20 = st.number_input("Min 20D Avg Volume", min_value=0, value=int(defaults["min_avg_volume_20"]), step=50000)
-    min_avg_traded_value_20 = st.number_input("Min 20D Avg Traded Value", min_value=0, value=int(defaults["min_avg_traded_value_20"]), step=10000000)
+    min_price = st.number_input(
+        "Min Price",
+        min_value=1.0,
+        value=float(defaults["min_price"]),
+        step=5.0
+    )
+
+    min_avg_volume_20 = st.number_input(
+        "Min 20D Avg Volume",
+        min_value=0,
+        value=int(defaults["min_avg_volume_20"]),
+        step=50000
+    )
+
+    min_avg_traded_value_20 = st.number_input(
+        "Min 20D Avg Traded Value",
+        min_value=0,
+        value=int(defaults["min_avg_traded_value_20"]),
+        step=10000000
+    )
 
 metrics_liquid, metrics_before_liquidity, metrics_after_liquidity = apply_liquidity_filters(
     metrics_df=metrics,
@@ -167,13 +189,13 @@ with overview_tab:
         "Use the scanner tabs for stock selection and export-ready outputs."
     )
 
-st.markdown("<div class='overview-panel'>", unsafe_allow_html=True)
-o1, o2, o3, o4 = st.columns(4, gap="small")
-o1.metric("Source Rows", source_rows, border=True)
-o2.metric("Universe Rows Used", universe_rows_used, border=True)
-o3.metric("Post-Liquidity", metrics_after_liquidity, border=True)
-o4.metric("Strict Liquidity", "On" if strict_liquidity else "Off", border=True)
-st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<div class='overview-panel'>", unsafe_allow_html=True)
+    o1, o2, o3, o4 = st.columns(4, gap="small")
+    o1.metric("Source Rows", source_rows, border=True)
+    o2.metric("Universe Rows Used", universe_rows_used, border=True)
+    o3.metric("Post-Liquidity", metrics_after_liquidity, border=True)
+    o4.metric("Strict Liquidity", "On" if strict_liquidity else "Off", border=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     left, right = st.columns([1.4, 1], gap="large")
 
@@ -194,6 +216,7 @@ st.markdown("</div>", unsafe_allow_html=True)
             "Sector Strength",
             "Most represented sectors among the filtered Indian universe."
         )
+
         if top_sectors.empty:
             st.info("No sector summary available.")
         else:
@@ -209,11 +232,13 @@ st.markdown("</div>", unsafe_allow_html=True)
             "Current Rules",
             "Applied before scanner results are generated."
         )
+
         render_pill_row([
             (universe_mode, "pill-blue"),
             ("Liquidity On" if enable_liquidity else "Liquidity Off", "pill-green"),
             ("Strict" if strict_liquidity else "Relaxed", "pill-amber"),
         ])
+
         st.write(f"**Min Price:** {min_price:,.2f}")
         st.write(f"**Min 20D Avg Volume:** {int(min_avg_volume_20):,}")
         st.write(f"**Min 20D Avg Traded Value:** {int(min_avg_traded_value_20):,}")
