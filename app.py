@@ -12,6 +12,7 @@ from services.scanners import (
 )
 from services.filters import apply_table_filters
 from services.export_utils import dataframe_to_csv_bytes
+from services.liquidity import apply_liquidity_filters, get_default_liquidity_profile
 
 st.set_page_config(page_title="Guru Scanner", layout="wide")
 
@@ -59,6 +60,9 @@ with st.sidebar:
         index=0
     )
 
+    strict_liquidity = st.checkbox("Strict liquidity mode", value=(universe_mode == "Nifty 750 (Total Market)"))
+    enable_liquidity = st.checkbox("Enable liquidity filters", value=True)
+
 selected_universe = load_selected_universe(universe_mode)
 
 history_filtered, source_rows, universe_rows_used = filter_to_selected_universe(
@@ -76,13 +80,28 @@ if metrics.empty:
     st.warning(f"Metrics dataframe is empty for {universe_mode}.")
     st.stop()
 
-all_sectors = sorted([s for s in metrics["sector"].dropna().unique().tolist()])
+defaults = get_default_liquidity_profile(universe_mode, strict_liquidity)
+
+with st.sidebar:
+    min_price = st.number_input("Min Price", min_value=1.0, value=float(defaults["min_price"]), step=5.0)
+    min_avg_volume_20 = st.number_input("Min 20D Avg Volume", min_value=0, value=int(defaults["min_avg_volume_20"]), step=50000)
+    min_avg_traded_value_20 = st.number_input("Min 20D Avg Traded Value", min_value=0, value=int(defaults["min_avg_traded_value_20"]), step=10000000)
+
+metrics_liquid, metrics_before_liquidity, metrics_after_liquidity = apply_liquidity_filters(
+    metrics_df=metrics,
+    min_price=min_price,
+    min_avg_volume_20=min_avg_volume_20,
+    min_avg_traded_value_20=min_avg_traded_value_20,
+    enable_filter=enable_liquidity,
+)
+
+all_sectors = sorted([s for s in metrics_liquid["sector"].dropna().unique().tolist()])
 
 with st.sidebar:
     search_text = st.text_input("Search symbol or company")
     selected_sectors = st.multiselect("Sector", options=all_sectors, default=[])
 
-filtered_metrics = apply_table_filters(metrics, search_text, selected_sectors)
+filtered_metrics = apply_table_filters(metrics_liquid, search_text, selected_sectors)
 
 q_screen = run_qullamaggie_screen(filtered_metrics)
 m_screen = run_minervini_screen(filtered_metrics)
@@ -108,13 +127,14 @@ k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Universe Constituents", len(selected_universe), border=True)
 k2.metric("Source NSE Rows", source_rows, border=True)
 k3.metric("Universe Rows Used", universe_rows_used, border=True)
-k4.metric("Q Matches", len(q_screen), border=True)
-k5.metric("Consensus", len(c_screen), border=True)
+k4.metric("Pre-Liquidity Rows", metrics_before_liquidity, border=True)
+k5.metric("Post-Liquidity Rows", metrics_after_liquidity, border=True)
 
-a1, a2, a3 = st.columns(3)
-a1.metric("Metrics Rows", len(filtered_metrics), border=True)
+a1, a2, a3, a4 = st.columns(4)
+a1.metric("Q Matches", len(q_screen), border=True)
 a2.metric("M Matches", len(m_screen), border=True)
-a3.metric("Unknown Mappings", unknown_count, border=True)
+a3.metric("Consensus", len(c_screen), border=True)
+a4.metric("Unknown Mappings", unknown_count, border=True)
 
 summary_left, summary_right = st.columns([2, 1])
 
@@ -133,6 +153,11 @@ with summary_left:
         )
 
 with summary_right:
+    st.subheader("Liquidity Rules")
+    st.write(f"Min Price: {min_price:,.2f}")
+    st.write(f"Min 20D Avg Volume: {int(min_avg_volume_20):,}")
+    st.write(f"Min 20D Avg Traded Value: {int(min_avg_traded_value_20):,}")
+
     st.subheader("Export")
     st.download_button(
         label=f"Download Qullamaggie CSV ({universe_mode})",
@@ -173,6 +198,7 @@ tabs = st.tabs([
 
 scanner_cols = [
     "symbol", "company", "sector", "close", "daily_pct", "weekly_pct",
+    "avg_volume_20", "avg_traded_value_20",
     "rs_score", "atr_rs", "dist_52w_high_pct", "range_pos_20",
     "volume_surge", "badge"
 ]
@@ -182,26 +208,51 @@ with tabs[0]:
     if q_screen.empty:
         st.info("No Qullamaggie matches yet.")
     else:
-        st.dataframe(q_screen[scanner_cols].round(2), use_container_width=True, hide_index=True)
+        st.dataframe(
+            q_screen[scanner_cols].round(2),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "close": st.column_config.NumberColumn("Price", format="%.2f"),
+                "daily_pct": st.column_config.NumberColumn("Daily %", format="%.2f"),
+                "weekly_pct": st.column_config.NumberColumn("Weekly %", format="%.2f"),
+                "avg_volume_20": st.column_config.NumberColumn("20D Avg Vol", format="%.0f"),
+                "avg_traded_value_20": st.column_config.NumberColumn("20D Avg Traded Value", format="%.0f"),
+                "rs_score": st.column_config.NumberColumn("RS", format="%.1f"),
+                "atr_rs": st.column_config.NumberColumn("ATR RS", format="%.1f"),
+                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
+                "range_pos_20": st.column_config.NumberColumn("20D Range %", format="%.2f"),
+                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
+            }
+        )
 
 with tabs[1]:
     st.subheader(f"Minervini Scanner — {universe_mode}")
     if m_screen.empty:
         st.info("No Minervini matches yet.")
     else:
-        st.dataframe(m_screen[scanner_cols].round(2), use_container_width=True, hide_index=True)
+        st.dataframe(
+            m_screen[scanner_cols].round(2),
+            use_container_width=True,
+            hide_index=True
+        )
 
 with tabs[2]:
     st.subheader(f"Consensus Scanner — {universe_mode}")
     if c_screen.empty:
         st.info("No overlap names yet.")
     else:
-        st.dataframe(c_screen.round(2), use_container_width=True, hide_index=True)
+        st.dataframe(
+            c_screen.round(2),
+            use_container_width=True,
+            hide_index=True
+        )
 
 with tabs[3]:
     st.subheader(f"Metrics Preview — {universe_mode}")
     metrics_cols = [
         "symbol", "company", "sector", "close",
+        "avg_volume_20", "avg_traded_value_20",
         "ema10", "sma20", "sma50", "sma100", "sma200",
         "daily_pct", "weekly_pct",
         "rs_score", "atr_rs",
