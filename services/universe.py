@@ -28,10 +28,26 @@ def load_nifty500_universe():
             df = pd.read_csv(io.StringIO(response.text))
             df.columns = [c.strip() for c in df.columns]
 
-            if "Symbol" in df.columns:
-                df["Symbol"] = df["Symbol"].astype(str).str.strip().str.upper()
+            rename_map = {
+                "Company Name": "company",
+                "Industry": "sector",
+                "Symbol": "symbol",
+            }
+            df = df.rename(columns=rename_map)
 
-            return df
+            if "symbol" not in df.columns:
+                raise ValueError("symbol column not found in Nifty 500 universe file")
+
+            if "company" not in df.columns:
+                df["company"] = df["symbol"]
+
+            if "sector" not in df.columns:
+                df["sector"] = "Unknown"
+
+            df["symbol"] = df["symbol"].astype(str).str.strip().str.upper()
+            df["yf_symbol"] = df["symbol"] + ".NS"
+
+            return df[["symbol", "company", "sector", "yf_symbol"]].drop_duplicates()
 
         except requests.exceptions.RequestException:
             if attempt < 2:
@@ -39,4 +55,7 @@ def load_nifty500_universe():
             else:
                 break
 
-    return pd.read_csv("data/nifty500_fallback.csv")
+    fallback = pd.read_csv("data/nifty500_fallback.csv")
+    fallback["symbol"] = fallback["symbol"].astype(str).str.strip().str.upper()
+    fallback["yf_symbol"] = fallback["symbol"] + ".NS"
+    return fallback[["symbol", "company", "sector", "yf_symbol"]].drop_duplicates()
