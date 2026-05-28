@@ -4,7 +4,12 @@ import streamlit as st
 
 from services.universe import load_nifty500_universe
 from services.indicators import compute_metrics
-from services.scanners import run_qullamaggie_screen
+from services.scanners import (
+    run_qullamaggie_screen,
+    run_minervini_screen,
+    run_consensus_screen,
+)
+from services.filters import apply_table_filters
 
 st.set_page_config(page_title="Guru Scanner", layout="wide")
 
@@ -27,11 +32,7 @@ except pd.errors.EmptyDataError:
     st.error("latest_prices.csv has no valid CSV content. Please regenerate it.")
     st.stop()
 
-st.success(f"Loaded cached price history: {len(history)} rows")
-
 universe = load_nifty500_universe()
-st.success(f"Universe loaded: {len(universe)} stocks")
-
 metrics = compute_metrics(history, universe)
 
 if metrics.empty:
@@ -39,45 +40,121 @@ if metrics.empty:
     st.stop()
 
 q_screen = run_qullamaggie_screen(metrics)
+m_screen = run_minervini_screen(metrics)
+c_screen = run_consensus_screen(q_screen, m_screen)
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Universe Rows", f"{len(universe)}")
-c2.metric("Price Rows", f"{len(history)}")
-c3.metric("Metrics Rows", f"{len(metrics)}")
-c4.metric("Qullamaggie Matches", f"{len(q_screen)}")
+all_sectors = sorted([s for s in metrics["sector"].dropna().unique().tolist()])
 
-tab1, tab2, tab3 = st.tabs(["Qullamaggie", "Metrics Preview", "Raw Price Preview"])
+with st.sidebar:
+    st.header("Filters")
+    search_text = st.text_input("Search symbol or company")
+    selected_sectors = st.multiselect("Sector", options=all_sectors, default=[])
 
-with tab1:
+filtered_metrics = apply_table_filters(metrics, search_text, selected_sectors)
+filtered_q = apply_table_filters(q_screen, search_text, selected_sectors)
+filtered_m = apply_table_filters(m_screen, search_text, selected_sectors)
+filtered_c = apply_table_filters(c_screen, search_text, selected_sectors)
+
+k1, k2, k3, k4, k5 = st.columns(5)
+k1.metric("Universe", len(universe), border=True)
+k2.metric("Price Rows", len(history), border=True)
+k3.metric("Q Matches", len(filtered_q), border=True)
+k4.metric("M Matches", len(filtered_m), border=True)
+k5.metric("Consensus", len(filtered_c), border=True)
+
+tabs = st.tabs([
+    "Qullamaggie",
+    "Minervini",
+    "Consensus",
+    "Metrics Preview",
+    "Raw Price Preview",
+])
+
+scanner_cols = [
+    "symbol", "company", "sector", "close", "daily_pct", "weekly_pct",
+    "rs_score", "atr_rs", "dist_52w_high_pct", "range_pos_20",
+    "volume_surge", "badge"
+]
+
+with tabs[0]:
     st.subheader("Qullamaggie Scanner")
-    if q_screen.empty:
+    if filtered_q.empty:
         st.info("No Qullamaggie matches yet. Add more historical rows and more symbols to latest_prices.csv.")
     else:
-        display_cols = [
-            "symbol", "company", "sector", "close", "daily_pct", "weekly_pct",
-            "rs_score", "atr_rs", "dist_52w_high_pct", "range_pos_20",
-            "volume_surge", "badge"
-        ]
         st.dataframe(
-            q_screen[display_cols].round(2),
+            filtered_q[scanner_cols].round(2),
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            column_config={
+                "close": st.column_config.NumberColumn("Price", format="%.2f"),
+                "daily_pct": st.column_config.NumberColumn("Daily %", format="%.2f"),
+                "weekly_pct": st.column_config.NumberColumn("Weekly %", format="%.2f"),
+                "rs_score": st.column_config.NumberColumn("RS", format="%.1f"),
+                "atr_rs": st.column_config.NumberColumn("ATR RS", format="%.1f"),
+                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
+                "range_pos_20": st.column_config.NumberColumn("20D Range %", format="%.2f"),
+                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
+            }
         )
 
-with tab2:
+with tabs[1]:
+    st.subheader("Minervini Scanner")
+    if filtered_m.empty:
+        st.info("No Minervini matches yet. This is normal with very small sample history.")
+    else:
+        st.dataframe(
+            filtered_m[scanner_cols].round(2),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "close": st.column_config.NumberColumn("Price", format="%.2f"),
+                "daily_pct": st.column_config.NumberColumn("Daily %", format="%.2f"),
+                "weekly_pct": st.column_config.NumberColumn("Weekly %", format="%.2f"),
+                "rs_score": st.column_config.NumberColumn("RS", format="%.1f"),
+                "atr_rs": st.column_config.NumberColumn("ATR RS", format="%.1f"),
+                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
+                "range_pos_20": st.column_config.NumberColumn("20D Range %", format="%.2f"),
+                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
+            }
+        )
+
+with tabs[2]:
+    st.subheader("Consensus Scanner")
+    if filtered_c.empty:
+        st.info("No overlap names yet. Consensus will populate after at least one stock appears in both scanners.")
+    else:
+        st.dataframe(
+            filtered_c.round(2),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "close": st.column_config.NumberColumn("Price", format="%.2f"),
+                "daily_pct": st.column_config.NumberColumn("Daily %", format="%.2f"),
+                "weekly_pct": st.column_config.NumberColumn("Weekly %", format="%.2f"),
+                "rs_score": st.column_config.NumberColumn("RS", format="%.1f"),
+                "atr_rs": st.column_config.NumberColumn("ATR RS", format="%.1f"),
+                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
+                "range_pos_20": st.column_config.NumberColumn("20D Range %", format="%.2f"),
+                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
+            }
+        )
+
+with tabs[3]:
     st.subheader("Metrics Preview")
-    preview_cols = [
-        "symbol", "company", "sector", "close", "daily_pct", "weekly_pct",
+    metrics_cols = [
+        "symbol", "company", "sector", "close",
         "ema10", "sma20", "sma50", "sma100", "sma200",
-        "rs_score", "atr_rs", "dist_52w_high_pct", "range_pos_20",
-        "volume_surge", "ma_aligned"
+        "daily_pct", "weekly_pct",
+        "rs_score", "atr_rs",
+        "dist_52w_high_pct", "range_pos_20",
+        "volume_surge", "ma_aligned", "green_day", "near_high"
     ]
     st.dataframe(
-        metrics[preview_cols].round(2),
+        filtered_metrics[metrics_cols].round(2),
         use_container_width=True,
         hide_index=True
     )
 
-with tab3:
+with tabs[4]:
     st.subheader("Raw Price Preview")
-    st.dataframe(history.head(50), use_container_width=True, hide_index=True)
+    st.dataframe(history.head(100), use_container_width=True, hide_index=True)
