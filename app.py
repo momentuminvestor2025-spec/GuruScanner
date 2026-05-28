@@ -1,3 +1,5 @@
+import os
+import pandas as pd
 import streamlit as st
 from services.universe import load_nifty500_universe
 from services.market_data import fetch_one_symbol_debug
@@ -5,6 +7,15 @@ from services.market_data import fetch_one_symbol_debug
 from pathlib import Path
 import appdirs as ad
 
+price_file = "data/latest_prices.csv"
+
+if os.path.exists(price_file):
+    history = pd.read_csv(price_file)
+    st.success(f"Loaded cached price history: {len(history)} rows")
+else:
+    st.error("No cached price file found. Please generate latest_prices.csv first.")
+    st.stop()
+    
 CACHE_DIR = ".cache"
 ad.user_cache_dir = lambda *args: CACHE_DIR
 Path(CACHE_DIR).mkdir(exist_ok=True)
