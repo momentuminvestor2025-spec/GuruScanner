@@ -1,0 +1,18 @@
+guruscanner-n500-filters/
+├── app.py
+├── README.md
+├── DEPLOYMENT_GUIDE.md
+├── PROJECT_STRUCTURE.txt
+├── requirements.txt
+├── packages.txt
+├── .streamlit/
+│   ├── config.toml
+│   └── secrets.toml.example
+├── components/
+│   ├── __init__.py
+│   └── styles.py
+└── services/
+    ├── __init__.py
+    ├── universe.py
+    ├── market_data.py
+    └── indicators.py
