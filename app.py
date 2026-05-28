@@ -2,8 +2,8 @@ import os
 import pandas as pd
 import streamlit as st
 
-from services.universe import load_nifty500_universe
-from services.universe_filters import filter_to_nifty500_universe
+from services.universe import load_selected_universe
+from services.universe_filters import filter_to_selected_universe
 from services.indicators import compute_metrics
 from services.scanners import (
     run_qullamaggie_screen,
@@ -34,7 +34,6 @@ div[data-testid="metric-container"] label {
 """, unsafe_allow_html=True)
 
 st.title("Guru Scanner")
-st.caption("Cache-first scanner mode — Nifty 500 filtered from full NSE source")
 
 price_file = "data/latest_prices.csv"
 
@@ -52,35 +51,42 @@ except pd.errors.EmptyDataError:
     st.error("latest_prices.csv has no valid CSV content. Please regenerate it.")
     st.stop()
 
-universe = load_nifty500_universe()
+with st.sidebar:
+    st.header("Filters")
+    universe_mode = st.selectbox(
+        "Universe",
+        options=["Nifty 500", "Nifty 750 (Total Market)"],
+        index=0
+    )
 
-history_n500, source_rows, nifty500_rows = filter_to_nifty500_universe(history, universe)
+selected_universe = load_selected_universe(universe_mode)
 
-if history_n500.empty:
-    st.error("No Nifty 500 rows found in latest_prices.csv after filtering.")
+history_filtered, source_rows, universe_rows_used = filter_to_selected_universe(
+    history,
+    selected_universe
+)
+
+if history_filtered.empty:
+    st.error(f"No rows found in latest_prices.csv for {universe_mode}.")
     st.stop()
 
-metrics = compute_metrics(history_n500, universe)
+metrics = compute_metrics(history_filtered, selected_universe)
 
 if metrics.empty:
-    st.warning("Metrics dataframe is empty after Nifty 500 filtering.")
+    st.warning(f"Metrics dataframe is empty for {universe_mode}.")
     st.stop()
-
-q_screen = run_qullamaggie_screen(metrics)
-m_screen = run_minervini_screen(metrics)
-c_screen = run_consensus_screen(q_screen, m_screen)
 
 all_sectors = sorted([s for s in metrics["sector"].dropna().unique().tolist()])
 
 with st.sidebar:
-    st.header("Filters")
     search_text = st.text_input("Search symbol or company")
     selected_sectors = st.multiselect("Sector", options=all_sectors, default=[])
 
 filtered_metrics = apply_table_filters(metrics, search_text, selected_sectors)
-filtered_q = apply_table_filters(q_screen, search_text, selected_sectors)
-filtered_m = apply_table_filters(m_screen, search_text, selected_sectors)
-filtered_c = apply_table_filters(c_screen, search_text, selected_sectors)
+
+q_screen = run_qullamaggie_screen(filtered_metrics)
+m_screen = run_minervini_screen(filtered_metrics)
+c_screen = run_consensus_screen(q_screen, m_screen)
 
 top_sectors = (
     filtered_metrics.groupby("sector", dropna=False)
@@ -95,17 +101,19 @@ top_sectors = (
 
 unknown_count = int((filtered_metrics["company"] == "Unknown Company").sum())
 
+st.caption(f"Cache-first scanner mode — {universe_mode} filtered from full NSE source")
 st.markdown("### Dashboard")
+
 k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Universe", len(universe), border=True)
+k1.metric("Universe Constituents", len(selected_universe), border=True)
 k2.metric("Source NSE Rows", source_rows, border=True)
-k3.metric("Nifty500 Rows Used", nifty500_rows, border=True)
-k4.metric("Q Matches", len(filtered_q), border=True)
-k5.metric("Consensus", len(filtered_c), border=True)
+k3.metric("Universe Rows Used", universe_rows_used, border=True)
+k4.metric("Q Matches", len(q_screen), border=True)
+k5.metric("Consensus", len(c_screen), border=True)
 
 a1, a2, a3 = st.columns(3)
 a1.metric("Metrics Rows", len(filtered_metrics), border=True)
-a2.metric("M Matches", len(filtered_m), border=True)
+a2.metric("M Matches", len(m_screen), border=True)
 a3.metric("Unknown Mappings", unknown_count, border=True)
 
 summary_left, summary_right = st.columns([2, 1])
@@ -127,30 +135,30 @@ with summary_left:
 with summary_right:
     st.subheader("Export")
     st.download_button(
-        label="Download Qullamaggie CSV",
-        data=dataframe_to_csv_bytes(filtered_q),
-        file_name="qullamaggie_scanner.csv",
+        label=f"Download Qullamaggie CSV ({universe_mode})",
+        data=dataframe_to_csv_bytes(q_screen),
+        file_name=f"qullamaggie_{universe_mode.lower().replace(' ', '_').replace('(', '').replace(')', '')}.csv",
         mime="text/csv",
         use_container_width=True
     )
     st.download_button(
-        label="Download Minervini CSV",
-        data=dataframe_to_csv_bytes(filtered_m),
-        file_name="minervini_scanner.csv",
+        label=f"Download Minervini CSV ({universe_mode})",
+        data=dataframe_to_csv_bytes(m_screen),
+        file_name=f"minervini_{universe_mode.lower().replace(' ', '_').replace('(', '').replace(')', '')}.csv",
         mime="text/csv",
         use_container_width=True
     )
     st.download_button(
-        label="Download Consensus CSV",
-        data=dataframe_to_csv_bytes(filtered_c),
-        file_name="consensus_scanner.csv",
+        label=f"Download Consensus CSV ({universe_mode})",
+        data=dataframe_to_csv_bytes(c_screen),
+        file_name=f"consensus_{universe_mode.lower().replace(' ', '_').replace('(', '').replace(')', '')}.csv",
         mime="text/csv",
         use_container_width=True
     )
     st.download_button(
-        label="Download Metrics CSV",
+        label=f"Download Metrics CSV ({universe_mode})",
         data=dataframe_to_csv_bytes(filtered_metrics),
-        file_name="metrics_preview.csv",
+        file_name=f"metrics_{universe_mode.lower().replace(' ', '_').replace('(', '').replace(')', '')}.csv",
         mime="text/csv",
         use_container_width=True
     )
@@ -170,28 +178,28 @@ scanner_cols = [
 ]
 
 with tabs[0]:
-    st.subheader("Qullamaggie Scanner")
-    if filtered_q.empty:
+    st.subheader(f"Qullamaggie Scanner — {universe_mode}")
+    if q_screen.empty:
         st.info("No Qullamaggie matches yet.")
     else:
-        st.dataframe(filtered_q[scanner_cols].round(2), use_container_width=True, hide_index=True)
+        st.dataframe(q_screen[scanner_cols].round(2), use_container_width=True, hide_index=True)
 
 with tabs[1]:
-    st.subheader("Minervini Scanner")
-    if filtered_m.empty:
+    st.subheader(f"Minervini Scanner — {universe_mode}")
+    if m_screen.empty:
         st.info("No Minervini matches yet.")
     else:
-        st.dataframe(filtered_m[scanner_cols].round(2), use_container_width=True, hide_index=True)
+        st.dataframe(m_screen[scanner_cols].round(2), use_container_width=True, hide_index=True)
 
 with tabs[2]:
-    st.subheader("Consensus Scanner")
-    if filtered_c.empty:
+    st.subheader(f"Consensus Scanner — {universe_mode}")
+    if c_screen.empty:
         st.info("No overlap names yet.")
     else:
-        st.dataframe(filtered_c.round(2), use_container_width=True, hide_index=True)
+        st.dataframe(c_screen.round(2), use_container_width=True, hide_index=True)
 
 with tabs[3]:
-    st.subheader("Metrics Preview")
+    st.subheader(f"Metrics Preview — {universe_mode}")
     metrics_cols = [
         "symbol", "company", "sector", "close",
         "ema10", "sma20", "sma50", "sma100", "sma200",
@@ -203,5 +211,5 @@ with tabs[3]:
     st.dataframe(filtered_metrics[metrics_cols].round(2), use_container_width=True, hide_index=True)
 
 with tabs[4]:
-    st.subheader("Filtered Price Preview")
-    st.dataframe(history_n500.head(100), use_container_width=True, hide_index=True)
+    st.subheader(f"Filtered Price Preview — {universe_mode}")
+    st.dataframe(history_filtered.head(100), use_container_width=True, hide_index=True)
