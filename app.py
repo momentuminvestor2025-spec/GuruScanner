@@ -2,7 +2,14 @@ import os
 import pandas as pd
 import streamlit as st
 
-from components.styles import inject_global_styles, render_hero, section_header, sidebar_brand
+from components.styles import (
+    inject_global_styles,
+    render_hero,
+    section_header,
+    sidebar_brand,
+    render_snapshot_row,
+    render_badge_row,
+)
 from services.universe import load_selected_universe
 from services.universe_filters import filter_to_selected_universe
 from services.indicators import compute_metrics
@@ -139,26 +146,29 @@ safe_universe = (
 
 render_hero(universe_mode)
 
+render_snapshot_row(
+    universe_count=len(selected_universe),
+    post_liquidity_count=metrics_after_liquidity,
+    q_count=len(q_screen),
+    m_count=len(m_screen),
+    c_count=len(c_screen),
+)
+
+st.markdown("<div style='height: 0.65rem;'></div>", unsafe_allow_html=True)
+
 section_header(
     "Dashboard",
     "Market Overview",
     "Track source coverage, universe filtering, liquidity pruning, and scanner hit rates."
 )
 
-k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Universe Constituents", len(selected_universe), border=True)
-k2.metric("Source NSE Rows", source_rows, border=True)
-k3.metric("Universe Rows Used", universe_rows_used, border=True)
-k4.metric("Pre-Liquidity Rows", metrics_before_liquidity, border=True)
-k5.metric("Post-Liquidity Rows", metrics_after_liquidity, border=True)
+k1, k2, k3, k4 = st.columns(4, gap="small")
+k1.metric("Source NSE Rows", source_rows, border=True)
+k2.metric("Universe Rows Used", universe_rows_used, border=True)
+k3.metric("Pre-Liquidity Rows", metrics_before_liquidity, border=True)
+k4.metric("Unknown Mappings", unknown_count, border=True)
 
-a1, a2, a3, a4 = st.columns(4)
-a1.metric("Q Matches", len(q_screen), border=True)
-a2.metric("M Matches", len(m_screen), border=True)
-a3.metric("Consensus", len(c_screen), border=True)
-a4.metric("Unknown Mappings", unknown_count, border=True)
-
-left, right = st.columns([2.1, 1])
+left, right = st.columns([1.65, 1], gap="large")
 
 with left:
     section_header(
@@ -173,8 +183,39 @@ with left:
             top_sectors.round(2),
             use_container_width=True,
             hide_index=True,
+            height=320,
             column_config={
                 "avg_rs": st.column_config.NumberColumn("Average RS", format="%.2f")
+            }
+        )
+
+    section_header(
+        "Leaders",
+        "Top RS Names",
+        "Highest relative-strength stocks surviving all active filters."
+    )
+    render_badge_row()
+
+    leader_cols = [
+        "symbol", "company", "sector", "close",
+        "rs_score", "dist_52w_high_pct",
+        "avg_traded_value_20", "volume_surge"
+    ]
+
+    if leaders.empty:
+        st.info("No leaders available after current filters.")
+    else:
+        st.dataframe(
+            leaders[leader_cols].round(2),
+            use_container_width=True,
+            hide_index=True,
+            height=430,
+            column_config={
+                "close": st.column_config.NumberColumn("Price", format="%.2f"),
+                "rs_score": st.column_config.NumberColumn("RS", format="%.2f"),
+                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
+                "avg_traded_value_20": st.column_config.NumberColumn("20D Avg Traded Value", format="%.0f"),
+                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
             }
         )
 
@@ -189,33 +230,6 @@ with right:
     st.write(f"**Min 20D Avg Traded Value:** {int(min_avg_traded_value_20):,}")
     st.write(f"**Search Universe:** {universe_mode}")
     st.write(f"**Strict Liquidity:** {'On' if strict_liquidity else 'Off'}")
-
-    section_header(
-        "Leaders",
-        "Top RS Names",
-        "Highest relative-strength stocks surviving all active filters."
-    )
-
-    leader_cols = [
-        "symbol", "close", "rs_score", "dist_52w_high_pct",
-        "avg_traded_value_20", "volume_surge"
-    ]
-
-    if leaders.empty:
-        st.info("No leaders available after current filters.")
-    else:
-        st.dataframe(
-            leaders[leader_cols].round(2),
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "close": st.column_config.NumberColumn("Price", format="%.2f"),
-                "rs_score": st.column_config.NumberColumn("RS", format="%.2f"),
-                "dist_52w_high_pct": st.column_config.NumberColumn("52W High Dist %", format="%.2f"),
-                "avg_traded_value_20": st.column_config.NumberColumn("20D Avg Traded Value", format="%.0f"),
-                "volume_surge": st.column_config.NumberColumn("Vol Surge", format="%.2f"),
-            }
-        )
 
     section_header(
         "Exports",
@@ -273,6 +287,7 @@ with tabs[0]:
         f"Qullamaggie — {universe_mode}",
         "Momentum leaders with expansion characteristics and strong relative strength."
     )
+    st.markdown(":green-badge[Qullamaggie Focus]", unsafe_allow_html=False)
     if q_screen.empty:
         st.info("No Qullamaggie matches yet.")
     else:
@@ -300,6 +315,7 @@ with tabs[1]:
         f"Minervini — {universe_mode}",
         "Trend template candidates from the liquid, filtered universe."
     )
+    st.markdown(":blue-badge[Minervini Focus]", unsafe_allow_html=False)
     if m_screen.empty:
         st.info("No Minervini matches yet.")
     else:
@@ -315,6 +331,7 @@ with tabs[2]:
         f"Consensus — {universe_mode}",
         "Stocks appearing in both scanner models."
     )
+    st.markdown(":orange-badge[Consensus Focus]", unsafe_allow_html=False)
     if c_screen.empty:
         st.info("No overlap names yet.")
     else:
